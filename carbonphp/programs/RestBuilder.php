@@ -615,7 +615,7 @@ END;
 
                             }
 
-                            // todo - make real method and use a seek method to use less memory
+                            // todo - make real method
                             $getMethod = static function (ReflectionMethod $method): string {
 
                                 $file = $method->getFileName();

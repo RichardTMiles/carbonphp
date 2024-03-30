@@ -5,9 +5,12 @@ namespace CarbonPHP\Abstracts;
 use CarbonPHP\CarbonPHP;
 use CarbonPHP\Error\PrivateAlert;
 use CarbonPHP\Interfaces\iColorCode;
+use CarbonPHP\Programs\Migrate;
 
 class Htaccess
 {
+
+    public static bool $disableCoors = false;
 
     public const ENDING_COMMENT = '# END CarbonPHP .htaccess injection - DO NOT MODIFY GENERATED CODE';
 
@@ -102,25 +105,44 @@ class Htaccess
     }
 
 
+
     public static function generalConfigurations()
     {
+
+        $migrationFolder = Migrate::$migrationFolder;
+
+        $disableCoors = self::$disableCoors ? <<<HTACCESS
+                    # https://stackoverflow.com/questions/14003332/access-control-allow-origin-wildcard-subdomains-ports-and-protocols/27990162#27990162
+                    SetEnvIf Origin ^(https?://.*(?::\d{1,5})?)$ CORS_ALLOW_ORIGIN=$1
+                    Header always set Access-Control-Allow-Origin %{CORS_ALLOW_ORIGIN}e env=CORS_ALLOW_ORIGIN
+                    Header merge Vary "Origin"
+                    
+                    # todo - allow for customized cache times? (Cached for a day - 86400)
+                    # it would be uncommon, but if you knew your api wasn't going to change often (like a weather api?)
+                    Header always set Access-Control-Max-Age: 0
+                    Header always set Access-Control-Allow-Methods "GET, POST, PATCH, PUT, DELETE, OPTIONS"
+                    Header always set Access-Control-Allow-Headers: *
+                    HTACCESS
+                    : '';
 
         self::updateHtaccess('CarbonPHP',
             <<<HTACCESS
                     # protect against DOS attacks by limiting file upload size [bytes]
                     LimitRequestBody 10240000
                     
+                    # turn off directory browsing through the web server
                     <IfModule mod_autoindex.c>
                         Options -Indexes
                     </IfModule>
-                    <Files mysqldump.sql>
-                        Order allow,deny
-                        Deny from all
-                    </Files>
+                    # all migration data is served using the php runtime (index.php), apache will not give away sensitive information
+                    <IfModule mod_alias.c>
+                        RedirectMatch 403 ^/$migrationFolder(/?.*)?$
+                    </IfModule>
                     <FilesMatch "(composer\.json)|(\.(htaccess|htpasswd|md|ini|log|sh|inc|bak|sql|yml|yaml|iml|cnf|gz|phar|webp))$">
                         Order Allow,Deny
                         Deny from all
                     </FilesMatch>
+                    # deny any file that begins with a . (dot)
                     <FilesMatch "^\.">
                         Order allow,deny
                         Deny from all
@@ -130,15 +152,7 @@ class Htaccess
                         Deny from all
                     </If>
                     
-                    # https://stackoverflow.com/questions/14003332/access-control-allow-origin-wildcard-subdomains-ports-and-protocols/27990162#27990162
-                    # SetEnvIf Origin ^(https?://.*(?::\d{1,5})?)$ CORS_ALLOW_ORIGIN=$1
-                    # Header always set Access-Control-Allow-Origin %{CORS_ALLOW_ORIGIN}e env=CORS_ALLOW_ORIGIN
-                    # Header merge Vary "Origin"
-                    
-                    # todo - Cached for a day - 86400
-                    # Header always set Access-Control-Max-Age: 0
-                    # Header always set Access-Control-Allow-Methods "GET, POST, PATCH, PUT, DELETE, OPTIONS"
-                    # Header always set Access-Control-Allow-Headers: *
+                    $disableCoors
                     
                     <FilesMatch "\.(ico|pdf|flv)$"> # 1 YEAR - 29030400; 1 WEEK - 604800; 2 DAYS - 172800; 1 MIN  - 60
                         Header set Cache-Control "max-age=29030400, public"

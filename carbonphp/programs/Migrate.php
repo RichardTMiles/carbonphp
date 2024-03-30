@@ -696,7 +696,6 @@ class Migrate implements iCommand
 
                 ColorCode::colorCode($mediaFile, $color ? iColorCode::BACKGROUND_GREEN : iColorCode::BACKGROUND_CYAN);
 
-
                 $color = !$color;
 
                 $localUpdates[] = 'file://' . $localPath;
@@ -870,7 +869,7 @@ class Migrate implements iCommand
                     ColorCode::colorCode("Doing an update to Mysql, do not exit!!!\nfile://$file",
                         iColorCode::BACKGROUND_YELLOW);
 
-                    //MySQL::MySQLSource($file);
+                    MySQL::MySQLSource($file);
 
                     break;
 
@@ -914,19 +913,6 @@ class Migrate implements iCommand
         Background::executeAndCheckStatus($replaceBashCmd, true, $output);
 
         print  "Output: (" . implode(PHP_EOL, $output) . ")\n";
-
-    }
-
-    public static function captureBalancedParenthesis(string $subject): array
-    {
-
-        if (preg_match_all($pattern = '#\((?:[^)(]+|(?R))*+\),#', $subject, $matches)) {
-
-            return $matches;
-
-        }
-
-        throw new PrivateAlert("Failed to capture balanced parenthesis group from string ($subject) using pattern ($pattern)");
 
     }
 
