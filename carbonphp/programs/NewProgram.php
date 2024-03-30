@@ -19,12 +19,15 @@ use CarbonPHP\Interfaces\iCommand;
 class NewProgram extends Composer implements iCommand
 {
 
+    // todo - is this deprecated?
     public static function getProgramsNamespacesAndDirectories(): array
     {
         $json = self::getComposerConfig();
 
         // loop through psr-4 and find namespaces and directories which have names ending with Programs\\
         $programs = [];
+
+        $json['autoload']['psr-4'] ??= [];
 
         foreach ($json['autoload']['psr-4'] as $namespace => $directory) {
             if ($namespace === 'Programs\\' || str_ends_with($namespace, '\\Programs\\')) {

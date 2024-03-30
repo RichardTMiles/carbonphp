@@ -6,6 +6,7 @@ use CarbonPHP\Abstracts\Background;
 use CarbonPHP\Abstracts\ColorCode;
 use CarbonPHP\Abstracts\Cryptography;
 use CarbonPHP\Abstracts\Files;
+use CarbonPHP\Abstracts\Fork;
 use CarbonPHP\Abstracts\MySQL;
 use CarbonPHP\Abstracts\Zip;
 use CarbonPHP\CarbonPHP;
@@ -23,13 +24,12 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileObject;
 use Throwable;
-use ZipArchive;
 
 class Migrate implements iCommand
 {
     public static string $migrationUrl = 'c6migration';
 
-    public static string $migrationFolder = 'tmp';
+    public static string $migrationFolder = 'tmp' . DIRECTORY_SEPARATOR . 'c6migrations';
 
     public static string $migrationFolderPrefix = 'migration_';
 
@@ -61,7 +61,8 @@ class Migrate implements iCommand
 
     public static int $maxFolderSizeForCompressionInMb = 500;
 
-    public static array $childProcessIds = [];
+
+    public static bool $parallel = false;
 
 
     public static function description(): string
@@ -113,7 +114,7 @@ class Migrate implements iCommand
 
         $updateCount = 0;
 
-        $migrationFiles = glob(CarbonPHP::$app_root . "cache/*migration*");
+        $migrationFiles = glob(CarbonPHP::$app_root . DIRECTORY_SEPARATOR . self::$migrationFolder . DIRECTORY_SEPARATOR . self::$migrationFolderPrefix . '*', GLOB_ONLYDIR);
 
         foreach ($migrationFiles as $migrationFolder) {
 
@@ -326,7 +327,7 @@ class Migrate implements iCommand
 
         }
 
-        $localManifestPath = CarbonPHP::$app_root . self::$migrationFolder . DS . 'local_migration_manifest.txt';
+        $localManifestPath = CarbonPHP::$app_root . self::$migrationFolder . DS . self::$migrationFolderPrefix . self::$currentTime . DS . 'local_migration_manifest.txt';
 
         $responseHeaders = [];
 
@@ -334,6 +335,7 @@ class Migrate implements iCommand
 
         ColorCode::colorCode("Attempting to get manifest at url ($manifestURL)");
 
+        // get the master manifest with sql and txt documents
         self::largeHttpPostRequestsToFile($manifestURL, $localManifestPath, $postData, $responseHeaders);
 
         ColorCode::colorCode('About to look for ABSPATH header');
@@ -364,9 +366,13 @@ class Migrate implements iCommand
 
         $firstImport = fgets($manifest);
 
+        fclose($manifest); // this will change location
+
         $position = strpos($firstImport, self::$migrationFolderPrefix);
 
         self::$remoteServerTime = (float)substr($firstImport, $position + strlen(self::$migrationFolderPrefix), strlen((string)microtime(true)));
+
+        self::$currentTime = self::$remoteServerTime;
 
         if (null === self::$remoteServerTime) {
 
@@ -392,7 +398,7 @@ class Migrate implements iCommand
 
         $manifestLineCount = self::getLineCount($localManifestPath);
 
-        // todo - this could be  bottle neck and should be processed one at a time
+        // todo - this could be bottle neck and should? be processed one at a time
         $manifest = fopen($localManifestPath, 'rb');
 
         if (false === $manifest) {
@@ -429,50 +435,94 @@ class Migrate implements iCommand
 
         $manifestComplete = false;
 
+        $fileImportCallables = [];
+
         while (false === feof($manifest)) {
 
             $uri = trim(fgets($manifest));
 
-            if (false === empty($uri)) {
-
-                if (str_contains($uri, self::MIGRATION_COMPLETE)) {
-
-                    $manifestComplete = true;
-
-                    ColorCode::colorCode('Manifest was transferred correctly!');
-
-                    break;
-
-                }
-
-                $importManifestFilePath = $uri;
-
-                $prefix = 'cache/';
-
-                if (str_starts_with($importManifestFilePath, $prefix)) {
-
-                    $importManifestFilePath = substr($uri, strlen($prefix));
-
-                }
-
-                $importManifestFilePath = CarbonPHP::$app_root . 'cache/' . $importManifestFilePath;
-
-                // todo - make this a regex or better
-                $importManifestFilePath = rtrim($importManifestFilePath, '.ph');
-
-                self::largeHttpPostRequestsToFile(self::$remoteUrl . $uri, $importManifestFilePath, []);
-
-                self::showStatus(++$done, $manifestLineCount);
-
-                $manifestArray[$uri] = $importManifestFilePath;
-
-            } else {
-
+            if (empty($uri)) {
                 --$manifestLineCount;
+                continue;
+            }
+
+            if (str_contains($uri, trim(self::MIGRATION_COMPLETE))) {
+
+                $manifestComplete = true;
+
+                ColorCode::colorCode('Manifest was transferred correctly!');
+
+                break;
 
             }
 
+            // convert the uri we will fetch to a local path to download to
+            $importManifestFilePath = $uri;
+
+            // this is a base64 encoded path specific for downloading migration files
+            if (str_starts_with($importManifestFilePath, self::$migrationUrl . '/')) {
+
+                $importManifestFilePath = substr($uri, strlen(self::$migrationUrl . '/'));
+
+                if (!self::isBase64($importManifestFilePath)) {
+
+                    throw new PrivateAlert('The import manifest file path was not correctly base64 encoded! (' . $importManifestFilePath . ')');
+
+                }
+
+                $importManifestFilePath = base64_decode($importManifestFilePath);
+
+            }
+
+            $importManifestFilePath = CarbonPHP::$app_root . $importManifestFilePath;
+
+            // todo - make this a regex or better
+            $importManifestFilePath = rtrim($importManifestFilePath, '.ph');
+
+            $fileImportCallables [] = static function () use ($uri, $importManifestFilePath) {
+
+                ColorCode::colorCode("Importing file ($importManifestFilePath)", iColorCode::CYAN);
+
+                // download all the files (sql or txt of zips and arbitrary files)) to the local server
+                self::largeHttpPostRequestsToFile(self::$remoteUrl . $uri, $importManifestFilePath, []);
+
+            };
+
+            $manifestArray[$uri] = $importManifestFilePath;
+
         }
+
+        $handleTasks = static function (array $tasks, callable $returnHandler): void {
+
+            if (self::$parallel) {
+
+                Fork::executeInChildProcesses($tasks, $returnHandler);
+
+                return;
+
+            }
+
+            foreach ($tasks as $task) {
+                $task();
+                /** @noinspection DisconnectedForeachInstructionInspection */
+                $returnHandler(0,0); // this just changes the progress bar
+            }
+
+        };
+
+        $handleTasks($fileImportCallables, static function ($pid , $status) use (&$done, $manifestLineCount) {
+
+            if ($status !== 0) {
+
+                throw new PrivateAlert("Download process ($pid) failed with status ($status)");
+
+            }
+
+            self::showStatus(++$done, $manifestLineCount);
+
+        });
+
+        unset($fileImportCallables);
 
         if (false === $manifestComplete) {
 
@@ -485,15 +535,33 @@ class Migrate implements iCommand
 
         $manifestArrayCount = count($manifestArray);
 
-        foreach ($manifestArray as $uri => $importFileAbsolutePath) {
+        $importProcesses = [];
+
+        foreach ($manifestArray as $importFileAbsolutePath) {
+
+            $importProcesses[] = static function () use ($importFileAbsolutePath, $requestedDirectoriesLocalCopyInfo) {
+
+                ColorCode::colorCode("Importing file ($importFileAbsolutePath)", iColorCode::CYAN);
+
+                // using the newly downloaded files, import them based on their extension (sql,txt)
+                self::importManifestFile($importFileAbsolutePath, $requestedDirectoriesLocalCopyInfo);
+
+            };
+
+        }
+
+        // todo - add option to run synchronously
+        $handleTasks($importProcesses, static function ($pid, $status) use (&$done, $manifestArrayCount) {
+
+            if ($status !== 0) {
+
+                throw new PrivateAlert("Failed to import manifest file ($pid) with status ($status)");
+
+            }
 
             self::showStatus(++$done, $manifestArrayCount);
 
-            CarbonPHP::$verbose and ColorCode::colorCode($importFileAbsolutePath, iColorCode::MAGENTA);
-
-            self::importManifestFile($importFileAbsolutePath, $uri, $requestedDirectoriesLocalCopyInfo);
-
-        }
+        });
 
         ColorCode::colorCode('Completed in ' . (microtime(true) - self::$currentTime) . ' sec');
 
@@ -520,7 +588,7 @@ class Migrate implements iCommand
      * @param string $uri
      * @return void
      */
-    public static function importMedia(string $file, string $uri, array $requestedDirectoriesLocalCopyInfo): void
+    public static function importMedia(string $file, array $requestedDirectoriesLocalCopyInfo): void
     {
 
         static $color = true;
@@ -552,6 +620,8 @@ class Migrate implements iCommand
             $localUpdates = [];
 
             // a new line delimited list of file names to import
+            // these files are not not encoded and are relative paths the the ABSPATH
+            // they maybe zips or actual files in the system.
             while (false === feof($fp)) {
 
                 self::showStatus(++$count, $lineCount);
@@ -559,6 +629,14 @@ class Migrate implements iCommand
                 $mediaFile = fgets($fp, 1024);
 
                 $mediaFile = trim($mediaFile);
+
+                if (str_contains($mediaFile, trim(self::MIGRATION_COMPLETE))) {
+
+                    ColorCode::colorCode("Migration file ($file) imported.");
+
+                    break;
+
+                }
 
                 // check if the folder
                 if ('' === $mediaFile) {
@@ -586,17 +664,10 @@ class Migrate implements iCommand
 
                 }
 
-                if (true === self::$throttle) {
+                $getMetaUrl = self::$remoteUrl . self::$migrationUrl . '/' . base64_encode($mediaFile) . '?license=' . self::$license;
 
-                    $getMetaUrl = self::$remoteUrl . self::$migrationUrl . '/' . base64_encode($mediaFile) . '?license=' . self::$license;
-
-                } else {
-
-                    $getMetaUrl = self::$remoteUrl . $uri . '?license=' . self::$license . '&file=' . base64_encode($mediaFile);
-
-                }
-
-                if (true === file_exists($localPath)) {
+                // todo - reimplement caching????
+                /*if (true === file_exists($localPath)) {
 
                     $hash = md5_file($localPath);
 
@@ -619,15 +690,12 @@ class Migrate implements iCommand
 
                     CarbonPHP::$verbose and ColorCode::colorCode("MD5 remote server check status ($updateStatus)", iColorCode::BACKGROUND_YELLOW);
 
-                }
+                }*/
 
-                if (CarbonPHP::$verbose) {
+                ColorCode::colorCode("Updates needed <$hash>($localPath)", iColorCode::BACKGROUND_CYAN);
 
-                    ColorCode::colorCode("Updates needed <$hash>($localPath)", iColorCode::BACKGROUND_CYAN);
+                ColorCode::colorCode($mediaFile, $color ? iColorCode::BACKGROUND_GREEN : iColorCode::BACKGROUND_CYAN);
 
-                    ColorCode::colorCode($mediaFile, $color ? iColorCode::BACKGROUND_GREEN : iColorCode::BACKGROUND_CYAN);
-
-                }
 
                 $color = !$color;
 
@@ -740,7 +808,7 @@ class Migrate implements iCommand
 
             fclose($fp);
 
-            ColorCode::colorCode('Migration Complete.');
+            ColorCode::colorCode("Media imported ($file).");
 
         } catch (Throwable $e) {
 
@@ -752,19 +820,35 @@ class Migrate implements iCommand
 
     }
 
+    public static function isBase64($s): bool
+    {
+        return (bool)preg_match('/^[a-zA-Z0-9\/\r\n+]*={0,2}$/', $s);
+    }
+
     /**
      * $requestedDirectoriesLocalCopyInfo is and array of directories and zip file paths.
      * The zip files are unique self::zipFolder "migration_{$zipPathHash}_{$md5Zip}_{$folderName}.zip"
      * @throws PrivateAlert
      */
-    public static function importManifestFile(string $file, string $uri, array $requestedDirectoriesLocalCopyInfo): void
+    public static function importManifestFile(string $file, array $requestedDirectoriesLocalCopyInfo): void
     {
 
         CarbonPHP::$verbose and ColorCode::colorCode("Importing file ($file)");
 
         $info = pathinfo($file);
 
-        switch ($info['extension']) {
+        if (empty($info['extension']) && self::isBase64($info['filename'] ?? '')) {
+
+            $file = base64_decode($info['filename']);
+
+            $info = pathinfo($file);
+
+        }
+
+        switch ($info['extension'] ?? null) {
+            default:
+
+                throw new PrivateAlert("The file extension (" . print_r($info, true) . ") was not recognized.");
 
             case 'txt':
 
@@ -773,9 +857,9 @@ class Migrate implements iCommand
 
                 ColorCode::colorCode("Import media manifest\nfile://$file", iColorCode::CYAN);
 
-                // self::importMedia($file, $uri, $requestedDirectoriesLocalCopyInfo);
-
                 print shell_exec("cat $file");
+
+                self::importMedia($file, $requestedDirectoriesLocalCopyInfo);
 
                 break;
 
@@ -786,7 +870,7 @@ class Migrate implements iCommand
                     ColorCode::colorCode("Doing an update to Mysql, do not exit!!!\nfile://$file",
                         iColorCode::BACKGROUND_YELLOW);
 
-                    // MySQL::MySQLSource($file);
+                    //MySQL::MySQLSource($file);
 
                     break;
 
@@ -833,11 +917,10 @@ class Migrate implements iCommand
 
     }
 
-    public static function captureBalancedParenthesis(string $subject): string
+    public static function captureBalancedParenthesis(string $subject): array
     {
 
         if (preg_match_all($pattern = '#\((?:[^)(]+|(?R))*+\),#', $subject, $matches)) {
-
 
             return $matches;
 
@@ -847,120 +930,147 @@ class Migrate implements iCommand
 
     }
 
-    public static function selfHidingFile(): string
+    public static function sendMigrationData(string $file): void
     {
 
-        $license = self::$license;
+        try {
 
-        if (empty($license)) {
+            header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 
-            throw new PrivateAlert('License is empty!');
+            header("Cache-Control: post-check=0, pre-check=0", false);
+
+            header("Pragma: no-cache");
+
+            $info = pathinfo($file);
+
+            if (str_ends_with($file, '.txt.php')) {
+
+                $return = include $file;
+
+                print $return;
+
+                exit(0);
+
+            }
+
+            // todo - ensure this is a zip?
+
+            $_POST['file'] ??= '';
+
+            $_POST['md5'] ??= '';
+
+            $fp = fopen($file, 'rb');
+
+            if (false === $fp) {
+
+                throw new PrivateAlert("Failed to open file pointer to ($file)");
+
+            }
+
+            if ('' !== $_POST['file']) {
+
+                $_POST['file'] = base64_decode($_POST['file']);
+
+                $valid = false; // init as false
+
+                while (false === feof($fp)) {
+
+                    $buffer = fgets($fp);
+
+                    if (str_contains($buffer, $_POST['file'])) {
+
+                        $valid = true;
+
+                        break; // Once you find the string, you should break out the loop.
+
+                    }
+
+                }
+
+                fclose($fp);
+
+                if (false === $valid) {
+
+                    http_response_code(400);
+
+                    exit(1);
+
+                }
+
+                $rootDir = dirname(__DIR__);
+
+                if ('' !== $_POST['md5']) {
+
+                    $localHash = md5_file($rootDir . DIRECTORY_SEPARATOR . $_POST['file']);
+
+                    print $localHash === $_POST['md5'] ? 'true' : $localHash;
+
+                    exit(0);
+
+                }
+
+                $absolutePath = $rootDir . DIRECTORY_SEPARATOR . $_POST['file'];
+
+                $fp = fopen($absolutePath, 'rb');
+
+                if (false === $fp) {
+
+                    http_response_code(400);
+
+                    exit(1);
+
+                }
+
+                $md5 = md5_file($absolutePath);
+
+                $sha1 = sha1_file($absolutePath);
+
+                header("md5: $md5");
+
+                header("sha1: $sha1");
+
+            }
+
+
+            // Assuming $fp is your file pointer, opened previously with fopen
+            $position = ftell($fp);
+
+            $bytesSent = fpassthru($fp);
+
+            if (0 >= $bytesSent) {
+
+                throw new PrivateAlert("No bytes send from file pointer ($file) starting from position ($position)");
+
+            }
+
+            if (!empty($_POST['unlink'])) {
+
+                unlink($file);
+
+            }
+
+        } catch (Throwable $e) {
+
+            ThrowableHandler::generateLog($e);
+
+            exit(1);
 
         }
+
+    }
+
+
+    public static function selfHidingFile(string $hiddenContents): string
+    {
 
         return <<<HALT
 <?php
 
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+// unlink(__FILE__);
 
-header("Cache-Control: post-check=0, pre-check=0", false);
-
-header("Pragma: no-cache");
-
-\$_POST['license'] ??= '';
-
-\$_POST['file'] ??= '';
-
-\$_POST['md5'] ??= '';
-
-if ('$license' !== \$_POST['license']) {
-
-    http_response_code(401); // Unauthorized
-        
-    exit(1);
-
-}
-
-\$fp = fopen(__FILE__, 'rb');
-
-// seek file pointer to data 
-fseek(\$fp, __COMPILER_HALT_OFFSET__);
-
-if ('' !== \$_POST['file']) {
-  
-    \$_POST['file'] = base64_decode(\$_POST['file']);
-
-    \$valid = false; // init as false
-    
-    while (false === feof(\$fp)) {
-    
-        \$buffer = fgets(\$fp);
-    
-        if (strpos(\$buffer, \$_POST['file']) !== false) {
-    
-            \$valid = true;
-    
-            break; // Once you find the string, you should break out the loop.
-    
-        }      
-    
-    }
-    
-    fclose(\$fp);
-    
-    if (false === \$valid) {
-
-        http_response_code(400);
-
-        exit(1);
-
-    }
-    
-    \$rootDir = dirname(__DIR__);
-    
-    if ('' !== \$_POST['md5']) {
-    
-        \$localHash = md5_file( \$rootDir . DIRECTORY_SEPARATOR . \$_POST['file'] );
-    
-        print \$localHash === \$_POST['md5'] ? 'true' : \$localHash;
-        
-        exit(0);
-    
-    }
-    
-    \$absolutePath = \$rootDir . DIRECTORY_SEPARATOR . \$_POST['file'];
-            
-    \$fp = fopen(\$absolutePath, 'rb');
-        
-    if (false === \$fp) {
-    
-        http_response_code(400);
-    
-        exit(1);
-    
-    }
-    
-    \$md5 = md5_file(\$absolutePath);
-    
-    \$sha1 = sha1_file(\$absolutePath);
-
-    header("md5: \$md5");
-    
-    header("sha1: \$sha1");
-
-} 
-
-fpassthru(\$fp);
-
-if ('' !== \$_POST['unlink']) {
-
-    // unlink(__FILE__);
-
-}
-
-
-__HALT_COMPILER(); 
-
+return <<<SELF_HIDING_FILE
+$hiddenContents
+SELF_HIDING_FILE;
 HALT;
 
 
@@ -989,8 +1099,6 @@ HALT;
 
                 $attempt++;
 
-                $failed = false;
-
                 $bytesSent = false;
 
                 $ch = curl_init();
@@ -1005,7 +1113,7 @@ HALT;
 
                 $timeout = self::$timeout;
 
-                ColorCode::colorCode("Setting the post ($url) timeout to ($timeout) <" . self::secondsToReadable($timeout) . '> with body (' . $query . ')', iColorCode::YELLOW);
+                ColorCode::colorCode("Setting the post ($url) timeout to ($timeout) <" . self::secondsToReadable($timeout) . '> with body (' . $query . ')');
 
                 curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
 
@@ -1083,7 +1191,7 @@ HALT;
 
                 curl_close($ch);
 
-                ColorCode::colorCode("Stored to local tmp file (file://$toLocalFilePath)", iColorCode::BACKGROUND_RED);
+                ColorCode::colorCode("Stored to local tmp file (file://$toLocalFilePath)");
 
                 if (401 === $httpCode) {
 
@@ -1156,39 +1264,41 @@ HALT;
 
                         $failed = true;
 
-                    } else {
+                        continue;
 
-                        print PHP_EOL;
+                    }
 
-                        $urlNoProtocol = static fn($url) => preg_replace('#http(?:s)?://(.*)/#', '$1', $url);
+                    print PHP_EOL;
 
-                        if (CarbonPHP::$app_root !== self::$remoteAbsolutePath) {
+                    $urlNoProtocol = static fn($url) => preg_replace('#http(?:s)?://(.*)/#', '$1', $url);
 
-                            // todo - windows -> linux support
-                            self::replaceInFile(rtrim(self::$remoteAbsolutePath, DS), rtrim(CarbonPHP::$app_root, DS), $toLocalFilePath);
+                    if (CarbonPHP::$app_root !== self::$remoteAbsolutePath) {
 
-                        } else if (CarbonPHP::$verbose) {
+                        // todo - windows -> linux support
+                        self::replaceInFile(rtrim(self::$remoteAbsolutePath, DS), rtrim(CarbonPHP::$app_root, DS), $toLocalFilePath);
 
-                            ColorCode::colorCode('App absolute path is the same on both servers.', iColorCode::YELLOW);
+                    } else if (CarbonPHP::$verbose) {
 
-                        }
+                        ColorCode::colorCode('App absolute path is the same on both servers.', iColorCode::YELLOW);
 
-                        if (self::$localUrl !== self::$remoteUrl) {
+                    }
 
-                            // todo - make these b2b replaceInFile() into one sed execution
-                            self::replaceInFile(rtrim(self::$remoteUrl, '/'), rtrim(self::$localUrl, '/'), $toLocalFilePath);
+                    if (self::$localUrl !== self::$remoteUrl) {
 
-                            self::replaceInFile($urlNoProtocol(self::$remoteUrl), $urlNoProtocol(self::$localUrl), $toLocalFilePath);
+                        // todo - make these b2b replaceInFile() into one sed execution
+                        self::replaceInFile(rtrim(self::$remoteUrl, '/'), rtrim(self::$localUrl, '/'), $toLocalFilePath);
 
-                        } else if (CarbonPHP::$verbose) {
+                        self::replaceInFile($urlNoProtocol(self::$remoteUrl), $urlNoProtocol(self::$localUrl), $toLocalFilePath);
 
-                            ColorCode::colorCode("Both servers point the same url.", iColorCode::YELLOW);
+                    } else if (CarbonPHP::$verbose) {
 
-                        }
+                        ColorCode::colorCode("Both servers point the same url.", iColorCode::YELLOW);
 
                     }
 
                 }
+
+                $failed = false;
 
             } while (true === $failed && $attempt < 3);
 
@@ -1202,7 +1312,9 @@ HALT;
 
         if (true === $failed) {
 
-            throw new PrivateAlert("Failed to download file ($url) to ($toLocalFilePath) after ($attempt) attempts");
+            $path = pathinfo($url);
+
+            throw new PrivateAlert("Failed to download file " . (empty($path['extension']) ? base64_decode($path['filename']) : "") . "($url) to ($toLocalFilePath) after ($attempt) attempts with query ($query)");
 
         }
 
@@ -1481,144 +1593,16 @@ HALT;
 
     }
 
-    # @link https://www.php.net/manual/en/function.curl-setopt.php
-    # @link https://stackoverflow.com/questions/5619429/help-me-understand-curlopt-readfunction
-    # modified from the examples above
-    public static function transferLargeFileOut(string $path): void
-    {
-
-        try {
-
-            $ch = curl_init();
-
-            if (false === $ch) {
-
-                throw new PrivateAlert('Failed to init curl.');
-
-            }
-
-            $fp = fopen($path, 'rb');
-
-            if (false === $fp) {
-
-                throw new PrivateAlert("Could not open fopen($path, 'rb');");
-
-            }
-
-            $size = filesize($path);
-
-            curl_setopt($ch, CURLOPT_URL, $path);
-
-            curl_setopt($ch, CURLOPT_HEADER, false);
-
-            curl_setopt($ch, CURLOPT_PUT, true);
-
-            curl_setopt($ch, CURLOPT_INFILE, $fp);
-
-            curl_setopt($ch, CURLOPT_INFILESIZE, $size);
-
-            #curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-
-            // never be ignorant and let your compiler or interpreter do const math for you
-            // 1048576 = (300 * 1024 * 1024) / (60 * 10)
-            // string read_callback (resource ch, resource fd, long length)
-            curl_setopt($ch, CURLOPT_READFUNCTION, static function ($ch, $fh, $length = 1048576) use ($size) {
-
-                static $current = 0;
-
-                /** Every meg uploaded we update the display and throttle a bit to reach target speed **/
-                static $throttle = 0;
-
-                static $start = null;
-
-                if (null === $start) {
-
-                    $start = time();
-
-                }
-
-                // Set your max upload speed - here 30mB / minute
-                // never be ignorant and let your compiler or interpreter do const math for you
-                $goal = 524288;
-
-                if (false === is_resource($fh)) {
-
-                    return 0;
-
-                }
-
-                $current += $length;
-
-                if ($current > $throttle) {
-
-                    $pct = round($current / $size * 100);
-
-                    $display = "Uploading (" . $pct . "%)  -  " . number_format($current) . '/' . number_format($size, 0);
-
-                    ColorCode::colorCode($display . str_repeat(" ", strlen($display)));
-
-                    //  1024 * 1024
-                    $throttle += 1048576;
-
-                    $elapsed = time() - $start;
-
-                    $expectedUpload = $goal * $elapsed;
-
-                    if ($current > $expectedUpload) {
-
-                        $sleep = ($current - $expectedUpload) / $goal;
-
-                        $sleep = round($sleep);
-
-                        for ($i = 1; $i <= $sleep; $i++) {
-
-                            $seconds = $sleep - $i + 1;
-
-                            // @link https://stackoverflow.com/questions/13745381/what-does-n-r-mean/13745450
-                            // @link https://stackoverflow.com/questions/4320081/clear-php-cli-output
-                            // The "\n" character is a line-feed which goes to the next line,
-                            // but "\r" is just a return that sends the cursor back to position 0 on the same line.
-                            ColorCode::colorCode("Throttling for $seconds Seconds   - $display", iColorCode::CYAN);
-
-                            sleep(1);
-
-                        }
-
-                        ColorCode::colorCode($display . str_repeat(" ", strlen($display)));
-
-                    }
-
-                }
-
-                return fread($fh, $length);
-
-            });
-
-            $ret = curl_exec($ch);
-
-            ColorCode::colorCode("The return status of the file transfer was ($ret)");
-
-        } catch (Throwable $e) {
-
-            ThrowableHandler::generateLog($e);
-
-            exit(0);
-
-        }
-
-    }
 
     /**
      * @throws PrivateAlert
      */
-    public static function dumpAll(string $pathHaltPHP): void
+    public static function dumpAll(): void
     {
-
-        $currentTime = self::$currentTime;
 
         $tables = Database::fetchColumn('SHOW TABLES');
 
-        $migrationPath = self::$migrationFolder . DS . self::$migrationFolderPrefix . $currentTime . DS;
+        $migrationPath = self::$migrationFolder . DS . self::$migrationFolderPrefix . self::$currentTime . DS;
 
         Files::createDirectoryIfNotExist(CarbonPHP::$app_root . $migrationPath);
 
@@ -1630,19 +1614,9 @@ HALT;
 
             MySQL::MySQLDump(null, true, true, $absolutePath, '', $table);
 
-            Background::executeAndCheckStatus("cat '$pathHaltPHP' '$absolutePath' > '$absolutePath.php'");
-
-            ColorCode::colorCode("Stored schemas to :: ($dumpFileName)", iColorCode::BLUE);
-
-            print $dumpFileName . '.php' . PHP_EOL;
+            print self::$migrationUrl . '/' . base64_encode($dumpFileName) . PHP_EOL;
 
             flush();
-
-            if (false === unlink($absolutePath)) {
-
-                ColorCode::colorCode("Failed to unlink ($absolutePath). This could cause a serious security hole.", iColorCode::BACKGROUND_RED);
-
-            }
 
         }
 
@@ -1654,7 +1628,7 @@ HALT;
     public static function zipFolder(string $relativeFolderPath): string
     {
 
-        $zipFolderRelative = self::$migrationFolder . DS . 'zip' . DS;
+        $zipFolderRelative = self::$migrationFolder . DS . self::$migrationFolderPrefix . self::$currentTime . DS;
 
         $zipFolder = CarbonPHP::$app_root . $zipFolderRelative;
 
@@ -1719,10 +1693,6 @@ HALT;
 
     /**
      * This would be the Parent server sending a set of resources as a manifest <map> to the child peer
-     * @param Route $route
-     * @param array $allowedDirectories
-     * @return Route
-     * @throws PrivateAlert
      * @link https://stackoverflow.com/questions/27309773/is-there-a-limit-of-the-size-of-response-i-can-read-over-http
      */
     public static function enablePull(array $allowedDirectories): bool
@@ -1769,9 +1739,7 @@ HALT;
 
                     $absolutePath = CarbonPHP::$app_root . $getPath;
 
-                    ColorCode::colorCode("Attempting to transfer out file \nfile://$absolutePath");
-
-                    self::transferLargeFileOut(CarbonPHP::$app_root . $getPath);
+                    self::sendMigrationData($absolutePath);
 
                     exit(0);
 
@@ -1826,24 +1794,12 @@ HALT;
 
                 }
 
-                $haltPHP = self::selfHidingFile();
-
-                $pathHaltPHP = CarbonPHP::$app_root . 'cache/haltPHP.php';
-
-                Files::createDirectoryIfNotExist(dirname($pathHaltPHP));
-
-                if (false === file_put_contents($pathHaltPHP, $haltPHP)) {
-
-                    throw new PrivateAlert("Failed to store halt file (file://$pathHaltPHP) to disk. Please check permissions.");
-
-                }
-
                 if (self::$MySQLDataDump) {
 
                     ColorCode::colorCode('About to dump mysql schemas <' . Database::$carbonDatabaseName . '> to file.',
                         iColorCode::CYAN);
 
-                    self::dumpAll($pathHaltPHP);
+                    self::dumpAll();
 
                 } else {
 
@@ -1853,7 +1809,7 @@ HALT;
 
                 if ([] === $requestedDirectories) {
 
-                    print self::MIGRATION_COMPLETE . '. No media directories requested. Done.';
+                    print self::MIGRATION_COMPLETE . 'No media directories requested. Done.';
 
                     exit(0);
 
@@ -1883,7 +1839,9 @@ HALT;
                     }
 
                     // create a list of all files the requesting server will need to transfer
-                    print self::manifestDirectory($media) . PHP_EOL;    // do not remove the newline
+                    $realpath = self::manifestDirectory($media);    // do not remove the newline
+
+                    print self::$migrationUrl . '/' . base64_encode($realpath) . PHP_EOL;
 
                 }
 
@@ -1949,7 +1907,7 @@ HALT;
 
         if (false === file_exists($licenseFile)) {
 
-            $this->createLicenseFile($licenseFile);
+            self::createLicenseFile($licenseFile);
 
         }
 
@@ -2065,8 +2023,6 @@ HALT;
 
             $files = [];
 
-            print __FILE__ . ':' . __LINE__ . " $path" . PHP_EOL;
-
             Files::createDirectoryIfNotExist($path);
 
             $directory = new DirectoryIterator($path);
@@ -2081,19 +2037,13 @@ HALT;
 
                 }
 
-                print __FILE__ . ':' . __LINE__ . " $filePath" . PHP_EOL;
-
                 if (false === $file->isDir()) {
 
                     $files[] = $filePath;
 
                 } else {
 
-                    print __FILE__ . ':' . __LINE__ . " isdir" . PHP_EOL;
-
                     if (false === self::directorySizeLessThan($filePath, self::$maxFolderSizeForCompressionInMb)) {
-
-                        print __FILE__ . ':' . __LINE__ . " larger than max megs" . PHP_EOL;
 
                         // recursive, logically simple; runtime expensive
                         $files += self::compileFolderFiles($filePath);
@@ -2101,8 +2051,6 @@ HALT;
                         continue;
 
                     }
-
-                    print __FILE__ . ':' . __LINE__ . " FilesystemIterator" . PHP_EOL;
 
                     $isDirEmpty = !(new FilesystemIterator($filePath))->valid();
 
@@ -2114,11 +2062,8 @@ HALT;
 
                     }
 
-                    print __FILE__ . ':' . __LINE__ . " zipFolder" . PHP_EOL;
-
                     $files[] = self::zipFolder($filePath);
 
-                    print __FILE__ . ':' . __LINE__ . " \$files[] = done" . PHP_EOL;
                 }
 
             }
@@ -2140,27 +2085,19 @@ HALT;
 
         try {
 
-            print __FILE__ . ':' . __LINE__ . PHP_EOL;
-
             $hash = base64_encode($path);
 
             $relativePath = self::$migrationFolder . DS . self::$migrationFolderPrefix . self::$currentTime . DS . 'media_' . $hash . '_' . self::$currentTime . '.txt.php';
 
             $storeToFile = CarbonPHP::$app_root . $relativePath;
 
-            print __FILE__ . ':' . __LINE__ . PHP_EOL;
-
             $files = self::compileFolderFiles($path);   // array
 
-            print __FILE__ . ':' . __LINE__ . PHP_EOL;
+            $files [] = PHP_EOL . self::MIGRATION_COMPLETE;
 
-            $files[] = ("files found in the directory ($path) :: " . print_r($files, true));
+            $allFiles = self::selfHidingFile(implode(PHP_EOL, $files));
 
-            $php = self::selfHidingFile();
-
-            $allFilesCSV = $php . PHP_EOL . implode(PHP_EOL, $files);
-
-            if (false === file_put_contents($storeToFile, $allFilesCSV)) {
+            if (false === file_put_contents($storeToFile, $allFiles)) {
 
                 throw new PrivateAlert("Failed to store the RecursiveDirectoryIterator contents to file ($storeToFile)");
 
@@ -2222,3 +2159,4 @@ HALT;
     }
 
 }
+

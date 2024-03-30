@@ -10,9 +10,90 @@ namespace CarbonPHP\Abstracts;
 
 use CarbonPHP\Error\PrivateAlert;
 use CarbonPHP\Error\PublicAlert;
+use CarbonPHP\Interfaces\iColorCode;
+use RuntimeException;
 
 abstract class Fork
 {
+
+    /**
+     * Wait for any child process to change status and return its PID and status.
+     *
+     * @param array $childPids Array of child process IDs to monitor.
+     * @return array|null Returns an array with 'pid' and 'status' of the exited child, or null if none have exited.
+     */
+    public static function waitForAnyChildProcess(array &$childPids): ?array
+    {
+
+        foreach ($childPids as $index => $pid) {
+
+            $status = 0;
+
+            // Check if this child process has exited without blocking
+            $result = pcntl_waitpid($pid, $status, WNOHANG);
+
+            if ($result > 0) {
+                // A child process has exited, remove it from the list
+                unset($childPids[$index]);
+
+                return ['pid' => $result, 'status' => $status];
+
+            }
+
+            if ($result < 0) {
+
+                // Error, remove the PID as it is no longer valid
+                unset($childPids[$index]);
+
+            }
+        }
+
+        // No child process has changed status
+        return null;
+
+    }
+
+
+    /**
+     * Execute multiple callables each in its own child process.
+     *
+     * @param array $tasks Array of callables to be executed in child processes.
+     */
+    public static function executeInChildProcesses(array $tasks, callable $returnHandler = null): void
+    {
+        $childPids = [];
+
+        foreach ($tasks as $task) {
+
+            $pid = self::safe($task);
+
+            // zero indicates pcntl_fork is not available and the task was executed in the current process
+            if (0 !== $pid) {
+
+                $childPids[] = $pid;
+
+            }
+
+        }
+
+        // Parent waits for all child processes to finish
+        while (count($childPids) > 0) {
+
+            sleep(1);
+
+            $exitStatus = self::waitForAnyChildProcess($childPids);
+
+            if (null !== $exitStatus) {
+
+                ColorCode::colorCode("Child process ({$exitStatus['pid']}) exited with status ({$exitStatus['status']})");
+
+                $returnHandler($exitStatus['pid'], $exitStatus['status']);
+
+            }
+
+        }
+
+    }
 
     /** If a callable function is passes the interpreter will attempt to
      * fork using the pncl library and then execute the desired closure.
@@ -25,23 +106,23 @@ abstract class Fork
      * @return int
      * @throws \Exception
      */
-    public static function become_daemon(callable $call = null) : int        // do not use this unless you know what you are doing
+    public static function become_daemon(callable $call): int        // do not use this unless you know what you are doing
     {
-        if (!\extension_loaded('pcntl')) {
+        if (!extension_loaded('pcntl')) {
             throw new PrivateAlert('You must have the PCNTL extension installed. See Carbon PHP for documentation.');
         }
 
         if ($pid = pcntl_fork()) {  // Parent
-            if (\is_callable($call)) {
-                return $pid;
-            }
-            exit;
+
+            return $pid;
+
         }
+
         if ($pid < 0) {
             throw new PrivateAlert('Failed to fork');
         }
 
-        \define('FORK', TRUE);
+        define('FORK', TRUE);
 
         /* child becomes our daemon */
         posix_setsid();
@@ -53,12 +134,12 @@ abstract class Fork
         register_shutdown_function(function () {
             session_abort();
             posix_kill(posix_getpid(), SIGHUP);
-            exit(1);
+            exit(0);
         });
 
-        if (\is_callable($call)) {
+        if (is_callable($call)) {
             $call();
-            exit(1);
+            exit(0);
         }
 
         return posix_getpid();
@@ -71,37 +152,48 @@ abstract class Fork
      * this when realtime communication using named pipe is requested. It only
      * speeds up execution, however it is not required and will never throw an
      * error.
-     * @param callable|null $closure
+     * @param callable $closure
      * @return int
-     * @throws \Exception
      */
-    public static function safe(callable $closure = null) : int
+    public static function safe(callable $closure): int
     {
-        if (!\extension_loaded('pcntl')) {
-            if ($closure !== null) {
-                $closure();
-            }
+
+        if (!extension_loaded('pcntl')) {
+
+            ColorCode::colorCode('PCNTL extension not found. Executing in current process.', iColorCode::BACKGROUND_YELLOW);
+
+            $closure();
+
             return 0;
+
         }
+
         if ($pid = pcntl_fork()) {    // return child id for parent and 0 for child
+
             return $pid;             // Parent
+
         }
+
         if ($pid < 0) {
-            throw new \RuntimeException('Failed to fork');
+
+            throw new RuntimeException('Failed to fork');
+
         }
-        \define('FORK', true);
+
+        define('FORK', true);
+
         // Database::resetConnection();
         // fclose(STDIN); -- unset
-        register_shutdown_function(function () {
+        register_shutdown_function(static function () {
             session_abort();
             posix_kill(posix_getpid(), SIGHUP);
-            exit(1);
+            exit(0);
         });
 
-        if ($closure !== null) {
-            $closure();
-        }
-        exit;
+        $closure();
+
+        exit(0);
+
     }
 
 }

@@ -12,9 +12,11 @@ namespace CarbonPHP\Abstracts;
 
 
 use CarbonPHP\CarbonPHP;
+use CarbonPHP\Error\PrivateAlert;
 use CarbonPHP\Error\PublicAlert;
 use CarbonPHP\Error\ThrowableHandler;
 use CarbonPHP\Interfaces\iColorCode;
+use CarbonPHP\Programs\Migrate;
 use Throwable;
 
 abstract class MySQL
@@ -94,8 +96,11 @@ IDENTIFIED;
         }
 
         if (empty($c[CarbonPHP::DATABASE][CarbonPHP::DB_HOST])) {
+
             print 'You must set [\'DATABASE\'][\'DB_HOST\'] in the "' . $c['SITE']['CONFIG'] . '" file.' . PHP_EOL;
+
             exit(1);
+
         }
 
         $cnf = [
@@ -175,13 +180,16 @@ IDENTIFIED;
             . ' --defaults-extra-file="' . self::buildCNF() . '" '
             . $otherOption . ' --skip-add-locks --single-transaction --quick '
             . ($schemas ? '' : ' --no-create-info ')
-            . ($data ? '--hex-blob ' : '--no-data ') . CarbonPHP::$configuration['DATABASE']['DB_NAME'] . " $specificTable > '$outputFile'";
+            . ($data ? '--hex-blob ' : '--no-data ') . CarbonPHP::$configuration[CarbonPHP::DATABASE][CarbonPHP::DB_NAME]
+            . " $specificTable > '$outputFile'";
 
         Background::executeAndCheckStatus($cmd);
 
         return self::$mysqldump = $outputFile;
 
     }
+
+
 
 
     /**

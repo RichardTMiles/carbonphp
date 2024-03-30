@@ -4,6 +4,7 @@ namespace CarbonPHP;
 
 use CarbonPHP\Abstracts\ColorCode;
 use CarbonPHP\Abstracts\Files;
+use CarbonPHP\Abstracts\Htaccess;
 use CarbonPHP\Abstracts\Serialized;
 use CarbonPHP\Enums\ThrowableReportDisplay;
 use CarbonPHP\Error\PrivateAlert;
@@ -531,6 +532,8 @@ class CarbonPHP
                 CarbonRestTest::setupServerVariables();
 
             }
+
+            Htaccess::generalConfigurations();
 
             ####################  Define your own server root
             self::$app_root ??= self::CARBON_ROOT;
