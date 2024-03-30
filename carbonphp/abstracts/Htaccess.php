@@ -37,7 +37,7 @@ class Htaccess
 
 
         // Attempt to open the .htaccess file in read-write mode
-        $htaccessFile = ABSPATH . '/.htaccess';
+        $htaccessFile = CarbonPHP::$app_root . '/.htaccess';
 
         $fileResource = fopen($htaccessFile, 'cb+');
 
@@ -104,9 +104,7 @@ class Htaccess
 
     }
 
-
-
-    public static function generalConfigurations()
+    public static function generalConfigurations(): void
     {
 
         $migrationFolder = Migrate::$migrationFolder;
