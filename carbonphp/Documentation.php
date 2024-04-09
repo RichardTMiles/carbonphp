@@ -657,7 +657,7 @@ SOCKET;
                 CarbonPHP::CONFIG => __FILE__,               // Send to sockets
                 CarbonPHP::TIMEZONE => 'America/Phoenix',    //  Current timezone
                 CarbonPHP::TITLE => 'CarbonPHP • C6',        // Website title
-                CarbonPHP::VERSION => trim(`git tag | tail -n 1`),               // Add link to semantic versioning
+                CarbonPHP::VERSION => trim(`git tag | tail -n 1` ?? '0.0.0'),               // Add link to semantic versioning
                 CarbonPHP::SEND_EMAIL => 'richard@miles.systems',
                 CarbonPHP::REPLY_EMAIL => 'richard@miles.systems',
                 CarbonPHP::HTTP => true, //CarbonPHP::$app_local

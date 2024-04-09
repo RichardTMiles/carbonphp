@@ -169,6 +169,8 @@ class CLI implements iCommand
 
                 }
 
+                $this->CONFIG[CarbonPHP::SITE][CarbonPHP::PROGRAMS] ??= [];
+
                 foreach ($this->CONFIG[CarbonPHP::SITE][CarbonPHP::PROGRAMS] as $namespace) {
 
                     if (class_exists($namespace) === false) {

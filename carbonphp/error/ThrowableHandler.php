@@ -290,13 +290,15 @@ class ThrowableHandler
      */
     public static function generateBrowserReport(array $errorForTemplate, bool $return = false): string
     {
-        static $count = 0;
+        static $count = 1;
 
-        if (1 < $count++) {
+        if (2 < $count) {
 
-            $errorForTemplate['DANGER'] = 'A possible recursive error has occurred in (or at least affecting) your $app->defaultRoute();';
+            $errorForTemplate['DANGER'] = __METHOD__ . " has been called ($count) times.";
 
         }
+
+        $count++;
 
         $errorForTemplate['CODE'] ??= '0';
 
@@ -336,7 +338,7 @@ class ThrowableHandler
         // we would still need to make it to the view
         // so it only break when we reach the view? todo - test? -- found error in wp finally, we need a default route check here.. or at least a .... startapplication check application === null? __destruct check
 
-        if (CarbonPHP::$application !== null && self::$attemptRestartAfterError && $count === 1) {
+        if (CarbonPHP::$application !== null && self::$attemptRestartAfterError && $count === 2) {
 
             CarbonPHP::resetApplication();  // we're in prod and we want to recover gracefully...
 
@@ -510,11 +512,11 @@ class ThrowableHandler
                     break;
             }
 
-            $browserOutput['CURRENT ERROR REPORTING LEVEL'] = self::errorLevelHumanReadable($errorReportingLevel);
+            $browserOutput['CURRENT ERROR REPORTING LEVEL (' . $errorReportingLevel . ')'] = self::errorLevelHumanReadable($errorReportingLevel);
 
             if (self::$level === $errorReportingLevel) {
 
-                $browserOutput['ERROR LEVEL WAS CHANGED FROM C6 INIT'] = self::errorLevelHumanReadable(self::$level);
+                $browserOutput['ERROR LEVEL WAS CHANGED FROM C6 INIT (' . self::$level . ')'] = self::errorLevelHumanReadable(self::$level);
 
                 $browserOutput['C6 INIT ERROR LEVEL'] = self::$level & error_reporting() ? 'Would have caught this error' : 'Would not have caught this error';
 
@@ -1134,8 +1136,6 @@ DESCRIPTION;
 
             $cleanErrorReport = <<<PRODUCTION
                     <p>> <span>ERROR DESCRIPTION</span>: "<i>Something went wrong on our end. We will be investigating soon.</i>"</p>
-                    <p>> <span>ERROR POSSIBLY CAUSED BY</span>: [<b>execute access forbidden, read access forbidden, write access forbidden, ssl required, ssl 128 required, ip address rejected, client certificate required, site access denied, too many users, invalid configuration, password change, mapper denied access, client certificate revoked, directory listing denied, client access licenses exceeded, client certificate is untrusted or invalid, client certificate has expired or is not yet valid, passport logon failed, source access denied, infinite depth is denied, too many requests from the same client ip</b>...]</p>
-                    <p>> <span>SOME PAGES ON THIS SERVER THAT YOU DO HAVE PERMISSION TO ACCESS</span>: [<a href="/">Home Page</a>, <a href="/about">About Us</a>, <a href="/contact">Contact Us</a>, <a href="/Blog">Blog</a>...]</p>
                     PRODUCTION;
 
         }

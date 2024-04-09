@@ -29,7 +29,7 @@ abstract class RestAutoTargeting extends RestSettings
 
         if (false === $tableDirectory) {
 
-            throw new PrivateAlert('Failed to parse composer json for ["autoload"]["psr-4"]["' . $tableNamespace . '"].');
+            throw new PrivateAlert('Failed to parse composer json for ["autoload"]["psr-4"]["' . $tableNamespace . '"]. Be sure to set your target namespace in the configuration file. (CarbonPHP::$configuration[CarbonPHP::REST][CarbonPHP::NAMESPACE])');
 
         }
 

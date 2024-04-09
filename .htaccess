@@ -80,7 +80,6 @@ Header always set Access-Control-Allow-Headers: *
     # on production websocket port is set in the virtual host configuation file; see 000-default.handlebars
 
 
-
     # https://www.danielmorell.com/guides/htaccess-seo/redirects/introduction-to-redirects
     # deny access to evil robots site rippers offline browsers and other nasty scum
     RewriteBase /
@@ -107,9 +106,7 @@ Header always set Access-Control-Allow-Headers: *
     RewriteRule ^info\.php$ - [L]
     RewriteRule ^phpstorm_.*$ - [L]
     RewriteRule ^xdebug_info\.php$ - [L]
-    RewriteRule ^wp-login\.php$ - [L]
-    RewriteRule ^(wp-(admin|includes).*) $1 [L]
-    RewriteRule ^tmp/migration_.*$ - [L]
+    RewriteRule ^(wp-.*) $1 [L]
     RewriteRule ^.*$ /index.php [L,QSA]
 
 </IfModule>

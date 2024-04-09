@@ -217,3 +217,6 @@ by [Tom Frost's](https://github.com/TomFrost) [Hydrogen](https://github.com/TomF
 
 Contributors can be found on the [contributors](https://github.com/CarbonORM/CarbonPHP/graphs/contributors) page.
 
+## TODO - Double down on apache configs 
+https://gist.github.com/RichardTMiles/ae5718aff63ab4633457b6285c825aa2
+This will be in CarbonWordPress and modified for general use in CarbonPHP.

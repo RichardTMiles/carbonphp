@@ -2232,7 +2232,9 @@ AND links.CONSTRAINT_NAME = '$constraintName'");
 
             if ('' === $stmts) {
 
-                throw new PrivateAlert('Nothing was passed to ' . __FUNCTION__ . ' and no query was compiled yet!');
+                ColorCode::colorCode('Nothing was passed to (' . __FUNCTION__ . ') and no query was compiled yet! This likely means the database is empty or rest has yet to be compiled. Will continue normally.', iColorCode::CYAN);
+
+                return;
 
             }
 

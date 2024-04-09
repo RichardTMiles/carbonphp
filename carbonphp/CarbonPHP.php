@@ -566,7 +566,7 @@ class CarbonPHP
             #################  DATABASE  ########################
             if ($config[self::DATABASE] ?? false) {
 
-                Database::$rebuildWithCarbonTables = $config[self::DATABASE][self::REBUILD_WITH_CARBON_TABLES] ??= false;
+                Database::$rebuildWithCarbonTables = $config[self::DATABASE][self::REBUILD_WITH_CARBON_TABLES] ??= true;
 
                 Database::$carbonDatabaseUsername = $config[self::DATABASE][self::DB_USER] ??= '';
 
