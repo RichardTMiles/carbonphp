@@ -514,7 +514,7 @@ class ThrowableHandler
 
             $browserOutput['CURRENT ERROR REPORTING LEVEL (' . $errorReportingLevel . ')'] = self::errorLevelHumanReadable($errorReportingLevel);
 
-            if (self::$level === $errorReportingLevel) {
+            if (self::$level !== $errorReportingLevel) {
 
                 $browserOutput['ERROR LEVEL WAS CHANGED FROM C6 INIT (' . self::$level . ')'] = self::errorLevelHumanReadable(self::$level);
 
