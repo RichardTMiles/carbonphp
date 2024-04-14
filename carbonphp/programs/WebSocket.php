@@ -13,7 +13,9 @@ use CarbonPHP\Error\PublicAlert;
 use CarbonPHP\Error\ThrowableHandler;
 use CarbonPHP\Interfaces\iColorCode;
 use CarbonPHP\Interfaces\iCommand;
+use CarbonPHP\Route;
 use CarbonPHP\Session;
+use CarbonPHP\WebSocket\WsBinaryStreams;
 use CarbonPHP\WebSocket\WsConnection;
 use CarbonPHP\WebSocket\WsFileStreams;
 use CarbonPHP\WebSocket\WsSignals;
@@ -23,6 +25,7 @@ use Error;
 use JetBrains\PhpStorm\NoReturn;
 use Throwable;
 use function is_resource;
+use const STDOUT;
 
 /**
  *
@@ -152,6 +155,39 @@ class WebSocket extends WsFileStreams implements iCommand
 
     }
 
+
+    public static function singleThreadedServer(): void
+    {
+
+        if (!(str_contains($_SERVER['HTTP_CONNECTION'] ?? '', 'upgrade') && str_contains($_SERVER['HTTP_UPGRADE'] ?? '', 'websocket'))) {
+
+            // Here you can handle the WebSocket upgrade logic
+            return;
+
+        }
+
+        if (str_contains($_SERVER['HTTP_CONNECTION'] ?? '', 'upgrade') && str_contains($_SERVER['HTTP_UPGRADE'] ?? '', 'websocket')) {
+            $logDir = __DIR__ . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'request' . DIRECTORY_SEPARATOR;
+
+            // Here you can handle the WebSocket upgrade logic
+            file_put_contents($logDir . microtime() . __FILE__ , print_r($_SERVER, true) . PHP_EOL);
+
+        }
+
+
+        $headers = getallheaders();
+
+        self::$socket = STDOUT;
+
+        WsBinaryStreams::handshake(self::$socket, $headers);
+
+        sleep(10);
+
+        self::sendToResource('test', self::$socket);
+
+        exit(0);
+
+    }
 
 
     public function run(array $argv): void

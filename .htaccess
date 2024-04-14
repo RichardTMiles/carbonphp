@@ -1,3 +1,44 @@
+# START CarbonPHP (CarbonPHP) - GENERATED CODE
+
+# protect against DOS attacks by limiting file upload size [bytes]
+LimitRequestBody 10240000
+
+# turn off directory browsing through the web server
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>
+# all migration data is served using the php runtime (index.php), apache will not give away sensitive information
+<IfModule mod_alias.c>
+    RedirectMatch 403 ^/tmp/c6migrations(/?.*)?$
+</IfModule>
+<FilesMatch "(composer\.json)|(\.(htaccess|htpasswd|md|ini|log|sh|inc|bak|sql|yml|yaml|iml|cnf|gz|phar|webp))$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+# deny any file that begins with a . (dot)
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+<If "%{REQUEST_URI} =~ m#^/\..*#">
+    Order allow,deny
+    Deny from all
+</If>
+
+
+
+<FilesMatch "\.(ico|pdf|flv)$"> # 1 YEAR - 29030400; 1 WEEK - 604800; 2 DAYS - 172800; 1 MIN  - 60
+    Header set Cache-Control "max-age=29030400, public"
+</FilesMatch>
+<FilesMatch "\.(jpg|jpeg|png|gif|swf|xml|txt|css|js|svg|webp)$">
+    Header set Cache-Control "max-age=604800, public"
+</FilesMatch>
+<FilesMatch "\.(html|htm|php|hbs|json|map)$">
+    Header set Cache-Control "max-age=0, private, public"
+</FilesMatch>
+
+# END CarbonPHP .htaccess injection - DO NOT MODIFY GENERATED CODE
+
 DirectoryIndex index.php
 
 SetEnv XDEBUG_SESSION 1

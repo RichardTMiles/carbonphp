@@ -704,7 +704,7 @@ class CarbonPHP
                 if ($_SERVER['REQUEST_METHOD'] !== 'GET' && empty($_POST)) {
 
                     # try to json decode. Json payloads ar sent to the input stream
-                    $_POST = json_decode(file_get_contents('php://input'), true);
+                    $_POST = json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
 
                     if ($_POST === null) {
 

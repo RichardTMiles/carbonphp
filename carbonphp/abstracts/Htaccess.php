@@ -187,7 +187,7 @@ class Htaccess
                 RewriteEngine On
                 RewriteCond %{HTTP:Connection} Upgrade [NC]
                 RewriteCond %{HTTP:Upgrade} websocket [NC]
-                RewriteRule ^/$path/?(.*) ws://127.0.0.1:$port/$path/$1  [P,L,E=noconntimeout:1,E=noabort:1]
+                RewriteRule ^/?$path/?(.*)? ws://127.0.0.1:$port/$path/$1  [P,L,E=noconntimeout:1,E=noabort:1]
             </IfModule>
             HTACCESS);
 

@@ -47,9 +47,15 @@ class Migrate implements iCommand
 
     public static ?string $remoteAbsolutePath = null;
 
-    public static ?string $directories = null;
+    public static ?string $localIp = null;
 
-    public static bool $throttle = false;
+    public static ?string $remoteLocalIp = null;
+
+    public static ?string $publicIp = null;
+
+    public static ?string $remotePublicIp = null;
+
+    public static ?string $directories = null;
 
     public const SKIP_MYSQL_DATA_DUMP_FLAG = '--no-dump-data';
 
@@ -327,7 +333,8 @@ class Migrate implements iCommand
 
         }
 
-        $localManifestPath = CarbonPHP::$app_root . self::$migrationFolder . DS . self::$migrationFolderPrefix . self::$currentTime . DS . 'local_migration_manifest.txt';
+
+        $localManifestPath = CarbonPHP::$app_root . self::$migrationFolder . DS . 'migration_manifest_' . time() . '.txt';
 
         $responseHeaders = [];
 
@@ -342,13 +349,28 @@ class Migrate implements iCommand
 
         $absolutePathHeader = 'abspath: ';
 
+        // these are backup options if the remote server is distributed (load ballanced)
+        $localIpHeader = 'local_ip: ';
+
+        $publicIpHeader = 'public_ip: ';
+
         foreach ($responseHeaders as $header) {
 
             if (str_starts_with($header, $absolutePathHeader)) {
 
                 self::$remoteAbsolutePath = trim(substr($header, strlen($absolutePathHeader)));
 
-                break;
+            }
+
+            if (str_starts_with($header, $localIpHeader)) {
+
+                self::$remoteLocalIp = trim(substr($header, strlen($localIpHeader)));
+
+            }
+
+            if (str_starts_with($header, $publicIpHeader)) {
+
+                self::$remotePublicIp = trim(substr($header, strlen($publicIpHeader)));
 
             }
 
@@ -386,7 +408,7 @@ class Migrate implements iCommand
 
         Files::createDirectoryIfNotExist($importFolderLocation);
 
-        $newLocalManifestPath = $importFolderLocation . 'local_migration_manifest.txt';
+        $newLocalManifestPath = $importFolderLocation . 'migration_manifest.txt';
 
         if (false === rename($localManifestPath, $newLocalManifestPath)) {
 
@@ -505,12 +527,12 @@ class Migrate implements iCommand
             foreach ($tasks as $task) {
                 $task();
                 /** @noinspection DisconnectedForeachInstructionInspection */
-                $returnHandler(0,0); // this just changes the progress bar
+                $returnHandler(0, 0); // this just changes the progress bar
             }
 
         };
 
-        $handleTasks($fileImportCallables, static function ($pid , $status) use (&$done, $manifestLineCount) {
+        $handleTasks($fileImportCallables, static function ($pid, $status) use (&$done, $manifestLineCount) {
 
             if ($status !== 0) {
 
@@ -916,6 +938,41 @@ class Migrate implements iCommand
 
     }
 
+    // this could be an extremely large file
+    // were trying to bypass load balancers by sending the file directly to the client
+    public static function proxyRequest(string $url, string $host = null, bool $verifySSL = true): never
+    {
+        $ch = curl_init();
+
+        // Set the URL to fetch
+        curl_setopt($ch, CURLOPT_URL, $url);
+
+        // Disable RETURNTRANSFER to output directly to STDOUT
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
+
+        // Keep SSL verification enabled for security
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $verifySSL);
+
+        // Set the Host header if provided
+        if ($host !== null) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array("Host: $host"));
+        }
+
+        // Execute the session, outputs directly to STDOUT
+        curl_exec($ch);
+
+        // Check for errors
+        if (curl_errno($ch)) {
+            echo 'Curl error: ' . curl_error($ch);
+        }
+
+        // Close cURL resource
+        curl_close($ch);
+
+        exit(0);
+    }
+
+
     public static function sendMigrationData(string $file): void
     {
 
@@ -927,7 +984,46 @@ class Migrate implements iCommand
 
             header("Pragma: no-cache");
 
-            $info = pathinfo($file);
+            if (!file_exists($file)) {
+
+                if (str_starts_with($file, ABSPATH)) {
+
+                    throw new PublicAlert("The file requested ($file) must begin with the servers ABSPATH constant (" . ABSPATH . ')');
+
+                }
+
+                // trim ABSPATH from $file
+                $file = substr($file, strlen(CarbonPHP::$app_root));
+
+                if (self::$remoteLocalIp !== self::$localIp) {
+
+                    if (self::sendCheckPing(self::$remoteLocalIp)) {
+
+                        self::proxyRequest('http://' . self::$remoteLocalIp . '/' . $file, $_SERVER['HTTP_HOST'], false);
+
+                    }
+
+                    ColorCode::colorCode("Failed to ping remote local ip (" . self::$remoteLocalIp . '). This is the local ip of the remote server that run the migration. This probably means this server is not on the same local area network, has blocked our request, is no longer running, or other network related events. Will attempt to use the public ip.');
+
+                }
+
+                if (self::$remotePublicIp !== self::$publicIp) {
+
+                    if (self::sendCheckPing(self::$remotePublicIp)) {
+                        // this could be an extremely large file
+                        // were trying to bypass load balancers by sending the file directly to the client
+                        self::proxyRequest('http://' . self::$remotePublicIp . '/' . $file, $_SERVER['HTTP_HOST'], false);
+                    }
+
+                    ColorCode::colorCode('Could not reach remote server for migration using public internet ip ('.self::$remotePublicIp.'). This could mean the ip is blocked for a load balancer only, the server is no longer running.');
+
+                }
+
+                throw new PublicAlert('The file requested does not exist on this server, though was supposedly created on this server');
+
+
+            }
+
 
             if (str_ends_with($file, '.txt.php')) {
 
@@ -938,6 +1034,8 @@ class Migrate implements iCommand
                 exit(0);
 
             }
+
+            $info = pathinfo($file);
 
             // todo - ensure this is a zip?
 
@@ -1065,7 +1163,7 @@ HALT;
     /**
      * @throws PrivateAlert
      */
-    public static function largeHttpPostRequestsToFile(string $url, string $toLocalFilePath, array $post = [], array &$responseHeaders = []): void
+    public static function largeHttpPostRequestsToFile(string $url, string $toLocalFilePath, array $post = [], array &$requestResponseHeaders = []): void
     {
         try {
 
@@ -1097,6 +1195,8 @@ HALT;
 
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $query = http_build_query($post));
 
+                curl_setopt($ch, CURLOPT_HTTPHEADER, $requestResponseHeaders);
+
                 $timeout = self::$timeout;
 
                 ColorCode::colorCode("Setting the post ($url) timeout to ($timeout) <" . self::secondsToReadable($timeout) . '> with body (' . $query . ')');
@@ -1124,7 +1224,7 @@ HALT;
 
                 self::curlReturnFileAppend($ch, $toLocalFilePath, $bytesSent);
 
-                self::curlGetResponseHeaders($ch, $responseHeaders);
+                self::curlGetResponseHeaders($ch, $requestResponseHeaders);
 
                 $removePrefixSetVar = static function (string $header, string $prefix, string &$setVarToHeaderValue): bool {
 
@@ -1146,7 +1246,7 @@ HALT;
 
                 };
 
-                foreach ($responseHeaders as $header) {
+                foreach ($requestResponseHeaders as $header) {
 
                     if ('' !== $serverSentMd5
                         && '' !== $serverSentSha1) {
@@ -1677,6 +1777,37 @@ HALT;
 
     }
 
+
+    public static function getPublicIpAddress()
+    {
+        $sock = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
+        // Port 53 is the standard port used for communication between a DNS client and server, which is used for Domain Name Service (DNS).
+        socket_connect($sock, '8.8.8.8', 53);
+        // You might want error checking code here based on the value of $res
+        socket_getsockname($sock, $addr);
+        socket_shutdown($sock);
+        socket_close($sock);
+
+        return $addr;
+    }
+
+    public static function sendCheckPing(string $domain): bool
+    {
+
+        // check that domain is wrapped in http or https
+
+        $domain = str_starts_with($domain, 'http') ? $domain : 'http://' . $domain;
+
+        // ensure domain ends with trailing /
+        $domain = rtrim($domain, '/') . '/';
+
+        // file get contents acts as a simple curl request, not good for large bodies, but here is appropreate
+        $response = file_get_contents($domain . self::$migrationUrl . '/ping');
+
+        return trim($response) === 'pong';
+
+    }
+
     /**
      * This would be the Parent server sending a set of resources as a manifest <map> to the child peer
      * @link https://stackoverflow.com/questions/27309773/is-there-a-limit-of-the-size-of-response-i-can-read-over-http
@@ -1686,6 +1817,16 @@ HALT;
 
         return Route::regexMatch('#^' . self::$migrationUrl . '/?(.*)?#i',
             static function (string $getPath = '') use ($allowedDirectories) {
+
+                if ($getPath === 'ping') {
+
+                    http_response_code(200);
+
+                    print 'pong';
+
+                    exit(0);
+
+                }
 
                 self::unlinkMigrationFiles();
 
@@ -1711,7 +1852,21 @@ HALT;
 
                 ColorCode::colorCode('checkLicense Passed');
 
+                if (headers_sent($file, $line)) {
+
+                    throw new PrivateAlert("Headers already sent in file ($file) on line ($line)! The migrations cannot work if content is sent out of order.");
+
+                }
+
                 header("abspath: " . CarbonPHP::$app_root);
+
+                self::$localIp = getHostByName(getHostName());
+
+                header(($localIpHeader = "local_ip") . ": " . self::$localIp);
+
+                self::$publicIp = self::getPublicIpAddress();
+
+                header(($publicIpHeader = "public_ip") . ": " . self::$publicIp);
 
                 if (array_key_exists(self::SKIP_MYSQL_DATA_DUMP_FLAG, $_POST)) {
 
@@ -1721,9 +1876,33 @@ HALT;
 
                 if ('' !== $getPath) {
 
+                    $requestHeaders = getallheaders();
+
+                    foreach ($requestHeaders as $key => $value) {
+
+                        if (str_starts_with($key, $localIpHeader)) {
+                            self::$remoteLocalIp = $value;
+                        }
+
+                        if (str_starts_with($key, $publicIpHeader)) {
+                            self::$remotePublicIp = $value;
+                        }
+
+                    }
+
                     $getPath = base64_decode($getPath);
 
                     $absolutePath = CarbonPHP::$app_root . $getPath;
+
+                    $absolutePath = realpath($absolutePath);
+
+                    $realpathRoot = realpath(CarbonPHP::$app_root);
+
+                    if (!str_starts_with($absolutePath, $realpathRoot)) {
+
+                        throw new PrivateAlert("The requested path ($absolutePath) is not a subdirectory of the root path ($realpathRoot). This event has been logged.");
+
+                    }
 
                     self::sendMigrationData($absolutePath);
 
@@ -1919,7 +2098,7 @@ HALT;
     public static function createLicenseFile(string $licensePHPFilePath): void
     {
 
-        $createLicense = uniqid('migration_', true) . Cryptography::genRandomHex(200);
+        $createLicense = uniqid('migration_', true) . Cryptography::genRandomHex(4000);
 
         if (false === file_put_contents($licensePHPFilePath,
                 <<<CODE

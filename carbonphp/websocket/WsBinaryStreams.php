@@ -4,6 +4,7 @@ namespace CarbonPHP\WebSocket;
 
 use CarbonPHP\Abstracts\ColorCode;
 use CarbonPHP\Interfaces\iColorCode;
+use Exception;
 use Socket;
 
 abstract class WsBinaryStreams
@@ -84,7 +85,7 @@ abstract class WsBinaryStreams
 
             return fwrite($socket, $response);
 
-        } catch (\Exception $e) {
+        } catch (Exception) {
 
             return false;
 
