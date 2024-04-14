@@ -218,7 +218,11 @@ class FullRestTest extends CarbonRestTest
 
         $json_array = json_decode(trim($out), true);
 
-        self::assertCount(1, $json_array['rest']);
+        $generatedSql = $json_array['sql']['1']['stmt']['sql'];
+
+        self::assertEquals(
+            "SELECT carbon_users.user_username FROM CarbonPHP.carbon_users  WHERE (carbon_users.user_membership < :injection0 AND carbon_users.user_location IS UNKNOWN) GROUP BY carbon_users.user_username  ORDER BY carbon_users.user_username ASC  LIMIT 1",
+            $generatedSql);
 
         $_GET = [
             iRest::SELECT => [
@@ -254,7 +258,11 @@ class FullRestTest extends CarbonRestTest
 
         $json_array = json_decode(trim($out), true);
 
-        self::assertCount(5, $json_array['rest']);
+        $generatedSql = $json_array['sql'][2]['stmt']['sql'];
+
+        self::assertEquals(
+            "SELECT carbon_users.user_username, carbon_users.user_session_id IS NULL, carbon_users.user_session_id IS UNKNOWN, carbon_users.user_session_id IS TRUE, carbon_users.user_session_id IS FALSE FROM CarbonPHP.carbon_users  WHERE (carbon_users.user_location IS UNKNOWN AND (carbon_users.user_session_id IS NULL) AND (carbon_users.user_username LIKE :injection0)) GROUP BY carbon_users.user_username  ORDER BY carbon_users.user_username ASC  LIMIT 1",
+            $generatedSql);
 
     }
 
