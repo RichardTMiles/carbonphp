@@ -101,7 +101,6 @@
       "@rest",
       "@test"
     ],
-    "post-update-cmd": "@post-install-cmd",
     "gcloud:instance:delete": [
       "chmod +x ./carbonphp/programs/gcpDeployment.sh",
       "./carbonphp/programs/gcpDeployment.sh -delete"
@@ -121,7 +120,7 @@
       "sudo gcloud compute ssh --zone \"us-central1-a\" \"purpleteam\" --project \"carbonphp-191421\" -- -NL 8080:localhost:80 -NL 8443:localhost:443 -NL 222:localhost:22"
     ],
     "post-update-cmd": [
-      "@rest",
+      "@post-install-cmd",
       "@test"
     ],
     "rei": "rm -rf vendor && rm composer.lock && composer i",
