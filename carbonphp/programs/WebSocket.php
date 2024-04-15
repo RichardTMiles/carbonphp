@@ -156,36 +156,92 @@ class WebSocket extends WsFileStreams implements iCommand
     }
 
 
-    public static function singleThreadedServer(): void
+    public static function handleSingleUserConnections(): void
     {
 
-        if (!(str_contains($_SERVER['HTTP_CONNECTION'] ?? '', 'upgrade') && str_contains($_SERVER['HTTP_UPGRADE'] ?? '', 'websocket'))) {
+        if (!(str_contains($_SERVER['HTTP_CONNECTION'] ?? '', 'Upgrade')
+            && str_contains($_SERVER['HTTP_UPGRADE'] ?? '', 'websocket'))) {
 
             // Here you can handle the WebSocket upgrade logic
             return;
 
         }
 
-        if (str_contains($_SERVER['HTTP_CONNECTION'] ?? '', 'upgrade') && str_contains($_SERVER['HTTP_UPGRADE'] ?? '', 'websocket')) {
-            $logDir = __DIR__ . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'request' . DIRECTORY_SEPARATOR;
+        file_put_contents(__DIR__ . '/logs/request/' . microtime() . '.txt', print_r($_SERVER, true));
 
-            // Here you can handle the WebSocket upgrade logic
-            file_put_contents($logDir . microtime() . __FILE__ , print_r($_SERVER, true) . PHP_EOL);
-
-        }
-
-
+        // get all headers has a polyfill in our function.php
         $headers = getallheaders();
 
         self::$socket = STDOUT;
 
         WsBinaryStreams::handshake(self::$socket, $headers);
 
-        sleep(10);
+        // @note - https://www.php.net/manual/en/function.ob-get-level.php comments
+        // my error handler is set to stop at 1, but here I believe clearing all is the only way.
+        // Php may start with an output buffer enabled but we need to clear that to in oder to send real time data.
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
 
-        self::sendToResource('test', self::$socket);
+        ob_start(new class {
+            public function __invoke($part, $flag): string
+            {
+                $flag_sent = match ($flag) {
+                    PHP_OUTPUT_HANDLER_START => "PHP_OUTPUT_HANDLER_START ($flag)",
+                    PHP_OUTPUT_HANDLER_CONT => "PHP_OUTPUT_HANDLER_CONT ($flag)",
+                    PHP_OUTPUT_HANDLER_END => "PHP_OUTPUT_HANDLER_END ($flag)",
+                    default => "Flag is not a constant ($flag)",
+                };
 
-        exit(0);
+                ColorCode::colorCode("(" . __METHOD__ . ") Output Handler: $flag_sent");
+
+                return WebSocket::encode($part);
+            }
+
+            public function __destruct()
+            {
+                ColorCode::colorCode("Ending WebSocket Encoding Buffer.");
+            }
+        });
+
+        ob_implicit_flush();
+
+        // self::$userConnectionRelationships[] = new WsUserConnectionRelationship(0, null, self::$socket, session_id(), $headers, $_SERVER['REMOTE_PORT'], $_SERVER['REMOTE_ADDR']);
+
+        $number = 0;
+
+        while (true) {
+
+            try {
+
+                //Database::close();
+
+                //Database::close(true);
+
+                // $read = [STDIN];
+
+               /* $number = stream_select($read, $write, $error, self::$streamSelectSeconds);
+
+                foreach ($read as $connection) {
+
+                    WsConnection::decodeWebsocket($connection);
+
+                }*/
+
+
+                print 'success (' . $number++ . ')';
+
+                ob_flush();
+
+                throw new PrivateAlert('test');
+
+            } catch (Throwable $e) {
+
+                ThrowableHandler::generateLogAndExit($e);
+
+            }
+
+        }
 
     }
 

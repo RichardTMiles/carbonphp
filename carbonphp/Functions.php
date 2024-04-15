@@ -10,6 +10,25 @@ namespace {                                     // This runs the following code 
     use CarbonPHP\Interfaces\iColorCode;
     use CarbonPHP\View;
 
+
+    /** @noinspection SpellCheckingInspection */
+    if (!function_exists('getallheaders'))
+    {
+        /** @noinspection SpellCheckingInspection - pollyfill for not only nginx, but websocket requests in apache?? */
+        function getallheaders() : array
+        {
+            $headers = array ();
+            foreach ($_SERVER as $name => $value)
+            {
+                if (str_starts_with($name, 'HTTP_'))
+                {
+                    $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+                }
+            }
+            return $headers;
+        }
+    }
+
     //  Displays alerts nicely
     //  Seamlessly include the DOM
     if (!function_exists('JsonAlert')) {

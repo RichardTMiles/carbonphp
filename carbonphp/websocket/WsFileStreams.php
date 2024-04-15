@@ -24,41 +24,42 @@ abstract class WsFileStreams extends WsBinaryStreams
      */
     public static array $userResourceConnections = [];
 
-
-    public static function sendToResource(string $data, &$connection, int $opCode = self::TEXT): bool
+    public static function sendToResource(string $data, $connection, int $opCode = self::TEXT): bool
     {
 
         try {
-
-            $socket = socket_import_stream($connection);
-
-            if (false === $socket) {
-
-                ColorCode::colorCode('The function socket_import_stream failed', iColorCode::RED);
-
-                return false;
-
-            }
 
             $data = self::encode($data, $opCode);
 
             $length = strlen($data);
 
+            if (get_resource_type($connection) === 'stream') {
+
+                $socket = socket_import_stream($connection);
+
+            } else {
+
+                $socket = $connection;
+
+            }
+
+            if (false === $socket) {
+
+                throw new PrivateAlert('The function socket_import_stream failed', iColorCode::RED);
+
+            }
+
             $sentLength = socket_send($socket, $data, $length, 0);
 
             if (false === $sentLength) {
 
-                ColorCode::colorCode('The function socket_send failed', iColorCode::RED);
-
-                return false;
+                throw new PrivateAlert('The function socket_send failed', iColorCode::RED);
 
             }
 
             if ($length !== $sentLength) {
 
-                ColorCode::colorCode("The function socket_send did not send the entire message ($length !== $sentLength).", iColorCode::RED);
-
-                return false;
+                throw new PrivateAlert("The function socket_send did not send the entire message ($length !== $sentLength).", iColorCode::RED);
 
             }
 
@@ -66,7 +67,7 @@ abstract class WsFileStreams extends WsBinaryStreams
 
         } catch (Throwable $e) {
 
-            ColorCode::colorCode($e->getMessage(), iColorCode::RED);
+            ThrowableHandler::generateLog($e, true);
 
             return false;
 

@@ -700,8 +700,12 @@ class ThrowableHandler
             (CarbonPHP::$http || CarbonPHP::$https)) {
 
             // Attempt to remove any previous in-progress output buffers
-            while (1 < ob_get_level()) {
+            // @note - https://www.php.net/manual/en/function.ob-get-level.php comments
+            // leaving it at one allows apache non proxied websocket requests to keep the encoding buffer
+            while (ob_get_level() > 1) {
 
+                // todo - I think this is a rabbit hole that needs to be explored in multiple contexts
+                // for now 1 is the magic number.
                 // this is ideal as ob_end_flush() would remove the back-to-browser buffer.
                 // it also doesn't bother returning the buffer
                 ob_end_clean();

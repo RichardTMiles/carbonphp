@@ -99,7 +99,7 @@ class CarbonPHP
 
     // Web Socket (Secure* see carbonphp.com)
     public const SOCKET = 'SOCKET';
-    public const WEBSOCKETD = 'WEBSOCKETD';
+    public const WEB_SOCKET = 'WEB_SOCKET';
     public const PORT = 'PORT';
     public const DEV = 'DEV';
     public const SSL = 'SSL';
@@ -279,6 +279,8 @@ class CarbonPHP
 
             }
 
+            WebSocket::handleSingleUserConnections();
+
             return self::startApplication() !== false; // startApplication can return null which is not allowed here
 
         } catch (Throwable $e) {
@@ -441,6 +443,8 @@ class CarbonPHP
         exit(1);
     }
 
+
+
     /**
      * @param iConfig|array|string|null $configuration
      * @param string|null $app_root
@@ -461,6 +465,24 @@ class CarbonPHP
             if (false === defined('DS')) {
 
                 define('DS', DIRECTORY_SEPARATOR);
+
+            }
+
+            if (!defined('STDOUT')) {
+
+                define('STDOUT', fopen('php://stdout', 'wb'));
+
+            }
+
+            if (!defined('STDIN')) {
+
+                define('STDIN', fopen('php://stdin', 'rb'));
+
+            }
+
+            if (!defined('OUTPUT')) {
+
+                define('OUTPUT', fopen('php://output', 'wb'));
 
             }
 
@@ -681,7 +703,7 @@ class CarbonPHP
                     break;
 
                 case WebSocket::$port:
-                    self::$protocol = 'wss://';    // todo - ws vs wss
+                    self::$protocol = 'wss://';    // todo - ws vs wss and upgrade connections to wss
 
             }
 
@@ -703,8 +725,18 @@ class CarbonPHP
 
                 if ($_SERVER['REQUEST_METHOD'] !== 'GET' && empty($_POST)) {
 
-                    # try to json decode. Json payloads ar sent to the input stream
-                    $_POST = json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
+                    $getAnyJsonPayloads = file_get_contents('php://input');
+
+                    if (json_validate($getAnyJsonPayloads)) {
+
+                        # try to json decode. Json payloads ar sent to the input stream
+                        $_POST = json_decode($getAnyJsonPayloads, true, 512, JSON_THROW_ON_ERROR);
+
+                    }elseif (is_string($getAnyJsonPayloads) && !empty($getAnyJsonPayloads)) {
+
+                        $_POST = ['stdin' => $getAnyJsonPayloads];
+
+                    }
 
                     if ($_POST === null) {
 

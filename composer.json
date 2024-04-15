@@ -16,7 +16,7 @@
   "minimum-stability": "dev",
   "prefer-stable": true,
   "require": {
-    "php": ">=8.2",
+    "php": ">=8.3",
     "mustache/mustache": "^2.13.0",
     "psr/log": "1.1.4",
     "ext-json": "*",

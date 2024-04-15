@@ -87,6 +87,7 @@ abstract class WsConnection
 
                 }
 
+
                 ColorCode::colorCode("Failed to get the users socket information for the payload.", iColorCode::RED);
 
                 break;

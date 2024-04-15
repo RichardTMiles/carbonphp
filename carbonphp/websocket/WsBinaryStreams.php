@@ -3,6 +3,8 @@
 namespace CarbonPHP\WebSocket;
 
 use CarbonPHP\Abstracts\ColorCode;
+use CarbonPHP\CarbonPHP;
+use CarbonPHP\Error\PrivateAlert;
 use CarbonPHP\Interfaces\iColorCode;
 use Exception;
 use Socket;
@@ -37,6 +39,7 @@ abstract class WsBinaryStreams
     public static string $cert = '/cert.pem';
 
     public static string $pass = 'Smokey';
+
     public static function handshake($socket, array &$headers = []): bool
     {
         $lines = preg_split("/\r\n/", @fread($socket, 4096));
@@ -74,16 +77,39 @@ abstract class WsBinaryStreams
 
         $secAccept = base64_encode(pack('H*', sha1($secKey . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')));
 
-        $response = "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" .
-            "Upgrade: websocket\r\n" .
-            "Connection: Upgrade\r\n" .
-            'WebSocket-Origin: ' . self::$host . "\r\n" .
-            'WebSocket-Location: ws://' . self::$host . ':' . self::$port . "/\r\n" .
-            "Sec-WebSocket-Accept:$secAccept\r\n\r\n";
+        $response = [
+            "HTTP/1.1 101 Web Socket Protocol Handshake",
+            "Upgrade: websocket",
+            "Connection: Upgrade",
+            'WebSocket-Origin: ' . self::$host,
+            'WebSocket-Location: ws://' . self::$host . ':' . self::$port . '/',
+            "Sec-WebSocket-Accept:$secAccept",
+            // These next two lines are not spec, but through much research and trial and error
+            // You can turn off chunked encoding by setting the content length to 0 and application/octet-stream
+            "Content-Length: 0",
+            "Content-Type: application/octet-stream",
+        ];
 
         try {
 
-            return fwrite($socket, $response);
+
+            if (STDOUT === $socket) {
+
+                foreach ($response as $line) {
+
+                    header($line);
+
+                }
+
+                flush();
+
+                return true;
+
+            }
+
+            $response = implode("\r\n", $response);
+
+            return fwrite($socket, $response . "\r\n");
 
         } catch (Exception) {
 
@@ -93,6 +119,31 @@ abstract class WsBinaryStreams
 
     }
 
+    /**
+     * This is a demonstration of a websocket clinet.
+     * If you find flaws in it, please let me know at simon.riget (at) gmail
+     * Websockets use hybi10 frame encoding:
+     *  0                   1                   2                   3
+     *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+     * +-+-+-+-+-------+-+-------------+-------------------------------+
+     * |F|R|R|R| opcode|M| Payload len |    Extended payload length    |
+     * |I|S|S|S|  (4)  |A|     (7)     |             (16/63)           |
+     * |N|V|V|V|       |S|             |   (if payload len==126/127)   |
+     * | |1|2|3|       |K|             |                               |
+     * +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
+     * |     Extended payload length continued, if payload len == 127  |
+     * + - - - - - - - - - - - - - - - +-------------------------------+
+     * |                               |Masking-key, if MASK set to 1  |
+     * +-------------------------------+-------------------------------+
+     * | Masking-key (continued)       |          Payload Data         |
+     * +-------------------------------- - - - - - - - - - - - - - - - +
+     * :                     Payload Data continued ...                :
+     * + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
+     * |                     Payload Data continued ...                |
+     * +---------------------------------------------------------------+
+     * See: https://tools.ietf.org/rfc/rfc6455.txt
+     * or:  http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-10#section-4.2
+     **/
     public static function encode($message, $opCode = self::TEXT): string
     {
 
@@ -121,6 +172,8 @@ abstract class WsBinaryStreams
             $out .= chr($length);
 
         }
+
+        file_put_contents(CarbonPHP::$app_root . 'websocket.txt', print_r($out, true));
 
         return $out . $message;
 

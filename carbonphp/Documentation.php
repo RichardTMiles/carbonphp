@@ -171,73 +171,6 @@ class Documentation extends Application implements iConfig
     }
 
 
-    /**  NOTE:
-     *  This is actually overriding the CM function in Carbon/Application.
-     *  I do this because the namespace changes for other applications not
-     *  in C6 context.
-     *
-     *  Stands for Controller -> Model
-     *
-     * This will run the controller/$class.$method().
-     * If the method returns !empty() the model/$class.$method() will be
-     * invoked. If an array is returned from the controller its values
-     * will be passed as parameters to our model.
-     * @link http://php.net/manual/en/function.call-user-func-array.php
-     *
-     * @TODO - I remember once using the return by reference to allow the changing of model from the controller. We now just use the return value of startApplication ie. false
-     *       - while I think this is a good use case, I think the obfuscation that this logic holds isn't true to the MVC arch thus shouldn't be done. I think with this in mind
-     *       - removing the & would same time in every route.... and I do not see a valid use case for it now (logically could it be used). I think we can remove with a minor version bump
-     *
-     * @param string $class This class name to autoload
-     * @param string $method The method within the provided class
-     * @param array $argv Arguments to be passed to method
-     * @return mixed the returned value from model/$class.$method() or false | void
-     * @noinspection DuplicatedCode                    - intellij needing help (avoiding unnecessary abstraction)
-     * @noinspection UnknownInspectionInspection       - intellij not helping intellij
-     */
-    public static function CM(string $class, string &$method, array &$argv = []): callable
-    {
-
-        $class = ucfirst(strtolower($class));   // Prevent malformed class names
-
-        $controller = "CarbonPHP\\Controller\\$class";     // add namespace for autoloader
-
-        $model = "CarbonPHP\\Model\\$class";
-
-        $method = strtolower($method);          // Prevent malformed method names
-
-        // Make sure our class exists
-        if (!class_exists($controller)) {
-            print "Invalid Controller ($controller) Passed to MVC. Please ensure your namespace mappings are correct!";
-        }
-
-        if (!class_exists($model)) {
-            print "Invalid Model ($model) Passed to MVC. Please ensure your namespace mappings are correct!";
-        }
-
-        // the array $argv will be passed as arguments to the method requested, see link above
-        $exec = static function &(string $class, array &$argv) use ($method) {
-            /** @noinspection CallableParameterUseCaseInTypeContextInspection - reference */
-            $argv = call_user_func_array([new $class, $method], $argv);
-            return $argv;
-        };
-
-        return static function () use ($exec, $controller, $model, &$argv) {
-            // execute controller
-            $argv = $exec($controller, $argv);
-
-            if (!empty($argv)) {                            // continue to the model?
-                if (is_array($argv)) {
-                    return $exec($model, $argv);        // array passed
-                }
-                $controller = [&$argv];                     // single return, allow return by reference TODO - is this still a thing? (not imperative
-                return $exec($model, $controller);
-            }
-
-            return $argv;
-        };
-    }
-
 
     /** TODO - we dont use this return value for anything; actually - we do but I think only for the mvc which is legacy
      *
@@ -674,9 +607,7 @@ SOCKET;
                     }*/
                 },
             ],
-            CarbonPHP::SOCKET => [
-                CarbonPHP::WEBSOCKETD => false,
-                CarbonPHP::PORT => 8888,
+            CarbonPHP::WEB_SOCKET => [
                 CarbonPHP::DEV => true,
                 CarbonPHP::SSL => [
                     CarbonPHP::KEY => '',
