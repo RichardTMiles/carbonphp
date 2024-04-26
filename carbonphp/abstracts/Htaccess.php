@@ -136,7 +136,7 @@ class Htaccess
                     <IfModule mod_alias.c>
                         RedirectMatch 403 ^/$migrationFolder(/?.*)?$
                     </IfModule>
-                    <FilesMatch "(composer\.json)|(\.(htaccess|htpasswd|md|ini|log|sh|inc|bak|sql|yml|yaml|iml|cnf|gz|phar|webp))$">
+                    <FilesMatch "(composer\.json)|(\.(htaccess|htpasswd|md|ini|log|sh|inc|bak|sql|yml|yaml|iml|cnf|gz|phar))$">
                         Order Allow,Deny
                         Deny from all
                     </FilesMatch>

@@ -444,6 +444,44 @@ class CarbonPHP
     }
 
 
+    /**
+     * @link https://www.php.net/manual/en/wrappers.php.php
+     * @return void
+     */
+    public static function protocolWrapper() : void
+    {
+
+        if (!defined('STDOUT')) {
+
+            define('STDOUT', fopen('php://stdout', 'wb'));
+
+        }
+
+        if (!defined('STDIN')) {
+
+            define('STDIN', fopen('php://stdin', 'rb'));
+
+        }
+
+        if (!defined('STDERR')) {
+
+            define('STDERR', fopen('php://stderr', 'wb'));
+
+        }
+
+        if (!defined('OUTPUT')) {
+
+            define('OUTPUT', fopen('php://output', 'wb'));
+
+        }
+
+        if (!defined('INPUT')) {
+
+            define('INPUT', fopen('php://input', 'rb'));
+
+        }
+
+    }
 
     /**
      * @param iConfig|array|string|null $configuration
@@ -468,23 +506,7 @@ class CarbonPHP
 
             }
 
-            if (!defined('STDOUT')) {
-
-                define('STDOUT', fopen('php://stdout', 'wb'));
-
-            }
-
-            if (!defined('STDIN')) {
-
-                define('STDIN', fopen('php://stdin', 'rb'));
-
-            }
-
-            if (!defined('OUTPUT')) {
-
-                define('OUTPUT', fopen('php://output', 'wb'));
-
-            }
+            self::protocolWrapper();
 
             if ($app_root !== null) {
 

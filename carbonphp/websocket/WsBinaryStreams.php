@@ -120,8 +120,7 @@ abstract class WsBinaryStreams
     }
 
     /**
-     * This is a demonstration of a websocket clinet.
-     * If you find flaws in it, please let me know at simon.riget (at) gmail
+     * This is a demonstration of a websocket client.
      * Websockets use hybi10 frame encoding:
      *  0                   1                   2                   3
      *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -173,16 +172,36 @@ abstract class WsBinaryStreams
 
         }
 
-        file_put_contents(CarbonPHP::$app_root . 'websocket.txt', print_r($out, true));
-
         return $out . $message;
 
     }
 
-    public static function decode($socketResource): array
+    public static function ensureConvertToSocket($connection)
+    {
+        if (get_resource_type($connection) === 'stream') {
+
+            if ($connection === STDIN
+                || $connection === STDOUT
+                || $connection === STDERR
+                || $connection === INPUT
+            ) {
+
+                return false;
+
+            }
+
+            return socket_import_stream($connection);
+
+        }
+
+        return $connection;
+
+    }
+
+    public static function decode($resource): array
     {
 
-        if (!$socketResource || !is_resource($socketResource)) {
+        if (!$resource || !is_resource($resource)) {
 
             return [
                 'error' => 'Resource gone away',
@@ -194,17 +213,25 @@ abstract class WsBinaryStreams
 
         $out = [];
 
-        //$read = fread($socketResource, 1);
-        // should things be unexpectedly sending with a length of 0 @link https://stackoverflow.com/questions/64855794/proxy-timeout-with-rewriterule
-        // @link https://stackoverflow.com/questions/41115870/is-binary-opcode-encoding-and-decoding-implementation-specific-in-websockets
-        $read = stream_get_contents($socketResource, 1);
+        if (get_resource_type($resource) === 'stream') {
+
+            //$read = fread($socketResource, 1);
+            // should things be unexpectedly sending with a length of 0 @link https://stackoverflow.com/questions/64855794/proxy-timeout-with-rewriterule
+            // @link https://stackoverflow.com/questions/41115870/is-binary-opcode-encoding-and-decoding-implementation-specific-in-websockets
+            $read = stream_get_contents($resource, 1);
+
+        } else {
+
+            $read = fread($resource, 1);
+
+        }
 
         if (false === $read) {
 
-            $socket = socket_import_stream(self::$socket);
+            $socket = self::ensureConvertToSocket(self::$socket);
 
             return [
-                'socketStatus' => stream_get_meta_data($socketResource),
+                'socketStatus' => stream_get_meta_data($resource),
                 'error' => 'socket read failure',
                 'socket_last_error' => $code = socket_last_error($socket),
                 'socket_strerror' => socket_strerror($code),
@@ -218,10 +245,19 @@ abstract class WsBinaryStreams
 
             ColorCode::colorCode('Empty WS Read', iColorCode::BACKGROUND_RED);
 
-            $socket = socket_import_stream(self::$socket);
+            $socket = self::ensureConvertToSocket(self::$socket);
+
+            if (empty($socket)) {
+
+                return [
+                    'error' => 'Empty socket read, if your proxying this could be a timeout. @link https://stackoverflow.com/questions/64855794/proxy-timeout-with-rewriterule',
+                    'opcode' => self::PING,
+                    'payload' => ''
+                ];
+            }
 
             return [
-                'stream_get_meta_data' => stream_get_meta_data($socketResource),
+                'stream_get_meta_data' => stream_get_meta_data($resource),
                 'error' => 'empty socket read, if your proxying this could be a timeout. @link https://stackoverflow.com/questions/64855794/proxy-timeout-with-rewriterule',
                 'socket_last_error' => $code = socket_last_error($socket),
                 'socket_strerror' => socket_strerror($code),
@@ -266,7 +302,7 @@ abstract class WsBinaryStreams
                 ];
         }
 
-        $handle = ord(fread($socketResource, 1));
+        $handle = ord(fread($resource, 1));
 
         // Most significant bit of the 2nd byte, tells you if the payload has been masked. A Server must not mask any frame!
         // Get the second byte and & it with 127, if it is 127 you have a masking key
@@ -291,7 +327,7 @@ abstract class WsBinaryStreams
         // Your length is an uint16 of byte 3 and 4
         if ($length === 0x7e) {
 
-            $handle = unpack('nl', fread($socketResource, 2));
+            $handle = unpack('nl', fread($resource, 2));
 
             $length = $handle['l'];
 
@@ -299,7 +335,7 @@ abstract class WsBinaryStreams
             // Byte is 127
             // Your length is a uint64 of byte 3 to 8
 
-            $handle = unpack('N*l', fread($socketResource, 8));
+            $handle = unpack('N*l', fread($resource, 8));
 
             $length = $handle['l2'] ?? $length;
 
@@ -332,7 +368,7 @@ abstract class WsBinaryStreams
 
                 $toRead = $length - $readLength;
 
-                $msg .= fread($socketResource, $toRead);
+                $msg .= fread($resource, $toRead);
 
                 if ($readLength === strlen($msg)) {
 
@@ -356,7 +392,7 @@ abstract class WsBinaryStreams
         // Payload
         // The next 4 bytes is the masking key, this key is used to decode the payload
 
-        $maskN = array_map('ord', str_split(fread($socketResource, 4)));
+        $maskN = array_map('ord', str_split(fread($resource, 4)));
 
         $maskC = 0;
 
@@ -369,7 +405,7 @@ abstract class WsBinaryStreams
 
             $buffer = min($bufferLength, $length - $i);
 
-            $handle = fread($socketResource, $buffer);
+            $handle = fread($resource, $buffer);
 
             for ($j = 0, $_length = strlen($handle); $j < $_length; ++$j) {
 

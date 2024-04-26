@@ -155,33 +155,15 @@ class WebSocket extends WsFileStreams implements iCommand
 
     }
 
-
-    public static function handleSingleUserConnections(): void
+    public static function outputBufferWebSocketEncoder(): callable
     {
-
-        if (!(str_contains($_SERVER['HTTP_CONNECTION'] ?? '', 'Upgrade')
-            && str_contains($_SERVER['HTTP_UPGRADE'] ?? '', 'websocket'))) {
-
-            // Here you can handle the WebSocket upgrade logic
-            return;
-
-        }
-
-        file_put_contents(__DIR__ . '/logs/request/' . microtime() . '.txt', print_r($_SERVER, true));
-
-        // get all headers has a polyfill in our function.php
-        $headers = getallheaders();
-
-        self::$socket = STDOUT;
-
-        WsBinaryStreams::handshake(self::$socket, $headers);
-
         // @note - https://www.php.net/manual/en/function.ob-get-level.php comments
         // my error handler is set to stop at 1, but here I believe clearing all is the only way.
         // Php may start with an output buffer enabled but we need to clear that to in oder to send real time data.
         while (ob_get_level() > 0) {
             ob_end_clean();
         }
+
 
         ob_start(new class {
             public function __invoke($part, $flag): string
@@ -195,7 +177,7 @@ class WebSocket extends WsFileStreams implements iCommand
 
                 ColorCode::colorCode("(" . __METHOD__ . ") Output Handler: $flag_sent");
 
-                return WebSocket::encode($part);
+                return WebSocket::encode($part . PHP_EOL);
             }
 
             public function __destruct()
@@ -206,34 +188,126 @@ class WebSocket extends WsFileStreams implements iCommand
 
         ob_implicit_flush();
 
-        // self::$userConnectionRelationships[] = new WsUserConnectionRelationship(0, null, self::$socket, session_id(), $headers, $_SERVER['REMOTE_PORT'], $_SERVER['REMOTE_ADDR']);
+        // these function calls are dynamic to whatever the current buffer is.
+        return static function () {
 
-        $number = 0;
+            if (0 === ob_get_length()) {
+                return;
+            }
+
+            // this will also remove the buffer, but IS NEEDED.
+            // ob_flush will not guarantee the buffer runs through the ob_start callback.
+            if (!ob_get_flush()) {
+
+                throw new PrivateAlert('Failed to flush the output buffer.');
+
+            }
+
+            // my first thought was to return this method call, but it is not needed.
+            self::outputBufferWebSocketEncoder();
+
+        };
+
+    }
+
+    /** @noinspection ForgottenDebugOutputInspection */
+    public static function handleSingleUserConnections(): void
+    {
+
+        if (!(str_contains($_SERVER['HTTP_CONNECTION'] ?? '', 'Upgrade')
+            && str_contains($_SERVER['HTTP_UPGRADE'] ?? '', 'websocket'))) {
+
+            // Here you can handle the WebSocket upgrade logic
+            return;
+
+        }
+
+        CarbonPHP::$socket = true;
+
+        CarbonPHP::$verbose = true;
+
+        file_put_contents(CarbonPHP::$app_root . '/logs/request/' . microtime() . '.txt', print_r($_SERVER, true));
+
+        // get all headers has a polyfill in our function.php
+        $headers = getallheaders();
+
+        WsBinaryStreams::handshake(STDOUT, $headers);
+
+        $flush = self::outputBufferWebSocketEncoder();
+
+        self::$userConnectionRelationships[] = new WsUserConnectionRelationship(0, null, STDIN, session_id(), $headers, $_SERVER['REMOTE_PORT'], $_SERVER['REMOTE_ADDR']);
+
+        $loop = 0;
+
+        self::$socket = STDOUT;
+
+        if (!is_resource(INPUT)) {
+
+            throw new Error('INPUT is not a valid resource');
+
+        }
+
+        sleep(5);
 
         while (true) {
 
             try {
 
-                //Database::close();
+                if (!is_resource(STDIN)) {
 
-                //Database::close(true);
+                    throw new Error('STDIN is not a valid resource');
 
-                // $read = [STDIN];
+                }
 
-               /* $number = stream_select($read, $write, $error, self::$streamSelectSeconds);
+                $flush();
+
+                Database::close();
+
+                Database::close(true);
+
+                $json = file_get_contents('php://input');
+
+                echo 'fuck '. $json;
+
+                print_r($_POST);
+
+                $flush();
+
+                sleep(30);
+                exit(0);
+
+                $read = [STDIN, INPUT];
+
+                $number = stream_select($read, $write, $error, self::$streamSelectSeconds);
+
+                if ($number === 0) {
+
+                    ColorCode::colorCode("No streams are requesting to be processed. (loop: $loop; users: " . count(self::$userResourceConnections) . ") ", iColorCode::CYAN);
+
+                    continue;
+
+                }
+
+                ColorCode::colorCode("$number, stream(s) are requesting to be processed.");
+
+                $flush();
 
                 foreach ($read as $connection) {
 
-                    WsConnection::decodeWebsocket($connection);
+                    if ($connection === STDIN) {
 
-                }*/
+                        $data = self::decode($connection);
 
+                        print_r($data);
 
-                print 'success (' . $number++ . ')';
+                    }
 
-                ob_flush();
+                }
 
-                throw new PrivateAlert('test');
+                $flush();
+
+                sleep(1);
+
 
             } catch (Throwable $e) {
 

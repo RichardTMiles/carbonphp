@@ -975,7 +975,10 @@ class ThrowableHandler
 
                         if (false === self::shouldSendJson()) {
 
+                            $baseMessage = $e->getMessage() ?? 'An error occurred.';
+
                             print <<<REDIRECT
+                            <p style="color: #851e1e">$baseMessage</p>
                             <meta http-equiv="refresh" content="0; URL=/$log_file_html" />
                             <script>window.location.replace("/$log_file_html");</script>
                             REDIRECT;
