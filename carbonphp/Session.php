@@ -48,6 +48,13 @@ class Session implements SessionHandlerInterface
 
     protected static string $sessionData = '';
 
+    protected static ?string $sessionLifetime = null;
+    protected static ?string $sessionPath = '/';
+    protected static ?string $sessionDomain = '';
+    protected static ?string $sessionSecure = '0';
+    protected static ?string $sessionHttpOnly = 'false';
+    protected static ?string $sessionSameSite = 'Lax';
+
     // TODO - why doesnt $sessionUpdated work? It seems even static variables are not shared between outside classes
     // I think this is only is session store context as the constructor assigns values correctly
     // the global scope is not shared between the two contexts either
@@ -104,12 +111,12 @@ class Session implements SessionHandlerInterface
             $currentCookieParams = session_get_cookie_params();
 
             session_set_cookie_params([
-                'lifetime' => $currentCookieParams["lifetime"],
-                'path' => '/',
-                'domain' => '', //$_SERVER["HTTP_HOST"]
-                'secure' => "0",
-                'httponly' => "false",
-                'samesite' => 'Lax',
+                'lifetime' => self::$sessionLifetime ?? $currentCookieParams['lifetime'],
+                'path' => self::$sessionPath ?? $currentCookieParams['path'],
+                'domain' => self::$sessionDomain ?? $currentCookieParams['domain'],
+                'secure' => self::$sessionSecure ?? $currentCookieParams['secure'],
+                'httponly' => self::$sessionHttpOnly ?? $currentCookieParams['httponly'],
+                'samesite' => self::$sessionSameSite ?? $currentCookieParams['samesite'],
             ]);
 
             $willSetSaveHandler = $dbStore && !headers_sent();

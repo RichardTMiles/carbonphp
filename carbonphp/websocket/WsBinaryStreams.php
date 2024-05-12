@@ -15,20 +15,17 @@ abstract class WsBinaryStreams
      * @var Socket|resource|null $socket https://www.php.net/manual/en/function.stream-set-timeout.php#100676
      */
     public static mixed $socket = null; // still a resource @link https://stackoverflow.com/questions/66871564/php-8-assign-resource-as-property-parameter-or-return-type
-    public const CONTINUE = 0x0;
+    public const int CONTINUE = 0x0;
 
-    public const TEXT = 0x1;
+    public const int TEXT = 0x1;
 
-    public const BINARY = 0x2;
+    public const int BINARY = 0x2;
 
-    public const CLOSE = 0x8;
+    public const int CLOSE = 0x8;
 
-    public const PING = 0x9;
+    public const int PING = 0x9;
 
-    public const PONG = 0xa;
-
-    # https://stackoverflow.com/questions/4812686/closing-websocket-correctly-html5-javascript
-    public const CLOSE_DATA_FRAME = 0x88; // todo - maybe, it ends up being equivalent to close.?
+    public const int PONG = 0xa;
 
     public static int $port = 8888;
 
@@ -280,14 +277,6 @@ abstract class WsBinaryStreams
 
         // Get the first byte and & it with 15, the result is your opcode
         $out['opcode'] = $handle & 0xf; // get the last 4 bits in the first byte
-
-        if (self::CLOSE === $out['opcode']) {
-
-            $out['dataframe'] = $handle & 0xff;
-
-            $out['CLOSE_DATA_FRAME'] = self::CLOSE_DATA_FRAME;
-
-        }
 
         if (!in_array($out['opcode'], [
             self::CONTINUE,
