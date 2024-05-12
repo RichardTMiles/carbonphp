@@ -17,6 +17,7 @@
   "prefer-stable": true,
   "require": {
     "php": ">=8.3",
+    "mustache/mustache": "^2.13.0",
     "psr/log": "1.1.4",
     "ext-json": "*",
     "ext-pdo": "*",
@@ -34,7 +35,7 @@
     "se/selenium-server-standalone": ">=3.141.59",
     "phpunit/phpunit": ">=9.5",
     "phpmetrics/phpmetrics": ">=2.7",
-    "richardtmiles/php-git-hooks": "^0.2.5"
+    "richardtmiles/php-git-hooks": "dev-main"
   },
   "authors": [
     {

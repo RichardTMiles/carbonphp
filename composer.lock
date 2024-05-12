@@ -4,8 +4,58 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a6a808f79343f4a09e85af397e19fa06",
+    "content-hash": "a2136902912916541ae3f7b49291af5c",
     "packages": [
+        {
+            "name": "mustache/mustache",
+            "version": "v2.14.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/bobthecow/mustache.php.git",
+                "reference": "e62b7c3849d22ec55f3ec425507bf7968193a6cb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/bobthecow/mustache.php/zipball/e62b7c3849d22ec55f3ec425507bf7968193a6cb",
+                "reference": "e62b7c3849d22ec55f3ec425507bf7968193a6cb",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.2.4"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "~1.11",
+                "phpunit/phpunit": "~3.7|~4.0|~5.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-0": {
+                    "Mustache": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Justin Hileman",
+                    "email": "justin@justinhileman.info",
+                    "homepage": "http://justinhileman.com"
+                }
+            ],
+            "description": "A Mustache implementation in PHP.",
+            "homepage": "https://github.com/bobthecow/mustache.php",
+            "keywords": [
+                "mustache",
+                "templating"
+            ],
+            "support": {
+                "issues": "https://github.com/bobthecow/mustache.php/issues",
+                "source": "https://github.com/bobthecow/mustache.php/tree/v2.14.2"
+            },
+            "time": "2022-08-23T13:07:01+00:00"
+        },
         {
             "name": "psr/log",
             "version": "1.1.4",
@@ -931,22 +981,23 @@
         },
         {
             "name": "richardtmiles/php-git-hooks",
-            "version": "0.2.6",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/RichardTMiles/php-git-hooks.git",
-                "reference": "90d39790521ac9734c03b8f552422ab1208f5d7d"
+                "reference": "dc3c6d64d9fad4fe55ec917ce099180d140d1d7d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/RichardTMiles/php-git-hooks/zipball/90d39790521ac9734c03b8f552422ab1208f5d7d",
-                "reference": "90d39790521ac9734c03b8f552422ab1208f5d7d",
+                "url": "https://api.github.com/repos/RichardTMiles/php-git-hooks/zipball/dc3c6d64d9fad4fe55ec917ce099180d140d1d7d",
+                "reference": "dc3c6d64d9fad4fe55ec917ce099180d140d1d7d",
                 "shasum": ""
             },
             "require": {
                 "carbonorm/carbonphp": ">=20.1.9",
                 "php": ">=8.2"
             },
+            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -966,9 +1017,9 @@
             "description": "version and release management",
             "support": {
                 "issues": "https://github.com/RichardTMiles/php-git-hooks/issues",
-                "source": "https://github.com/RichardTMiles/php-git-hooks/tree/0.2.6"
+                "source": "https://github.com/RichardTMiles/php-git-hooks/tree/main"
             },
-            "time": "2024-03-14T09:03:58+00:00"
+            "time": "2024-04-28T05:51:38+00:00"
         },
         {
             "name": "se/selenium-server-standalone",
@@ -2033,7 +2084,9 @@
     ],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": [],
+    "stability-flags": {
+        "richardtmiles/php-git-hooks": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
