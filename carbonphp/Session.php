@@ -48,12 +48,12 @@ class Session implements SessionHandlerInterface
 
     protected static string $sessionData = '';
 
-    protected static ?string $sessionLifetime = null;
-    protected static ?string $sessionPath = '/';
-    protected static ?string $sessionDomain = '';
-    protected static ?string $sessionSecure = '0';
-    protected static ?string $sessionHttpOnly = 'false';
-    protected static ?string $sessionSameSite = 'Lax';
+    public static ?string $sessionLifetime = null;
+    public static ?string $sessionPath = '/';
+    public static ?string $sessionDomain = '';
+    public static ?string $sessionSecure = '0';
+    public static ?string $sessionHttpOnly = 'false';
+    public static ?string $sessionSameSite = 'Lax';
 
     // TODO - why doesnt $sessionUpdated work? It seems even static variables are not shared between outside classes
     // I think this is only is session store context as the constructor assigns values correctly
