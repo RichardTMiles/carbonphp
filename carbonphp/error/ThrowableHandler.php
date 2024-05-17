@@ -225,7 +225,7 @@ class ThrowableHandler
     }
 
 
-    public static function exitAndSendBasedOnRequested(array $json, string $html = null): never
+    public static function exitAndSendBasedOnRequested(array $json, string|null $html = null): never
     {
 
         $_SERVER["CONTENT_TYPE"] ??= '';
@@ -354,7 +354,7 @@ class ThrowableHandler
      * Converts a PHP error level integer into a human-readable string.
      * @return string A human-readable string of PHP error levels.
      */
-    public static function errorLevelHumanReadable(int $level = null): string
+    public static function errorLevelHumanReadable(int|null $level = null): string
     {
         $level ??= error_reporting();
         $errorLevels = [
@@ -648,7 +648,7 @@ class ThrowableHandler
      * @noinspection ForgottenDebugOutputInspection
      * @noinspection JsonEncodingApiUsageInspection
      */
-    public static function generateLog(Throwable $e = null, bool $return = false, string $level = null, array &$log_array = [], string $color = iColorCode::RED): array
+    public static function generateLog(Throwable|null $e = null, bool|null $return = false, string|null $level = null, array &$log_array = [], string $color = iColorCode::RED): array
     {
 
         $parseMessage = static function (mixed $log_array) {
@@ -1016,7 +1016,7 @@ class ThrowableHandler
 
     }
 
-    public static function generateLogAndExit(Throwable $e = null, string $level = null, array &$log_array = [], string $color = iColorCode::RED): never
+    public static function generateLogAndExit(Throwable|null $e = null, string|null $level = null, array &$log_array = [], string $color = iColorCode::RED): never
     {
 
         self::generateLog($e, false, $level, $log_array, $color);
@@ -1032,7 +1032,7 @@ class ThrowableHandler
      * @param Throwable $e
      * @return string|array
      */
-    protected static function generateCallTrace(Throwable $e = null): array
+    protected static function generateCallTrace(Throwable|null $e = null): array
     {
 
         $_SERVER["CONTENT_TYPE"] ??= '';

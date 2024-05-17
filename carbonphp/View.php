@@ -33,7 +33,7 @@ class View
      * @param string|null $directoryContext
      * @return bool
      */
-    public static function content(string $file, string $directoryContext = null): bool
+    public static function content(string $file, string|null $directoryContext = null): bool
     {
 
         global $json;

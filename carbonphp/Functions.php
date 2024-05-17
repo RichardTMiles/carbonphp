@@ -405,7 +405,7 @@ namespace {                                     // This runs the following code 
          * @param string $separator
          * @return string
          */
-        function errorLevelToString(int $errorLevel = null, $separator = ' & '): string
+        function errorLevelToString(int|null $errorLevel = null, string $separator = ' & '): string
         {
 
             if (null === $errorLevel) {

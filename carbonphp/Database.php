@@ -328,7 +328,7 @@ FOOT;
      * connection to the database will be closed
      * @param PDO|null $database
      */
-    public static function setDatabase(PDO $database = null): void
+    public static function setDatabase(PDO|null $database = null): void
     {
 
         if (null === $database
@@ -691,7 +691,7 @@ FOOT;
      * @return array
      * @throws PublicAlert
      */
-    public static function newEntity(string $tag_id, string $dependant_carbon_id = null): string
+    public static function newEntity(string $tag_id, string|null $dependant_carbon_id = null): string
     {
 
         $carbons = Rest::getDynamicRestClass(Carbons::class, iRestSinglePrimaryKey::class);
@@ -1056,7 +1056,7 @@ FOOT;
     }
 
 
-    public static function scanAnd(callable $callback, string $tableDirectory = null): void
+    public static function scanAnd(callable $callback, string|null $tableDirectory = null): void
     {
 
         $tableDirectory ??= Rest::autoTargetTableDirectory();
@@ -1759,7 +1759,7 @@ WHERE cols.TABLE_SCHEMA=?
     /**
      * @param bool|null $cli
      */
-    public static function refreshDatabase(bool $cli = null): void
+    public static function refreshDatabase(bool|null $cli = null): void
     {
 
         if (null === $cli) {

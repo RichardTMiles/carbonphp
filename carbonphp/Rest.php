@@ -16,7 +16,7 @@ use Throwable;
 abstract class Rest extends RestLifeCycle
 {
 
-    protected static function remove(array &$remove, array $argv, array $primary = null): bool
+    protected static function remove(array &$remove, array $argv, array|null $primary = null): bool
     {
 
         do {
@@ -218,7 +218,7 @@ abstract class Rest extends RestLifeCycle
 
     }
 
-    protected static function select(mixed &$return, array $argv, array $primary = null, ...$fetchOptions): bool
+    protected static function select(mixed &$return, array $argv, array|null $primary = null, ...$fetchOptions): bool
     {
 
         static $selectSQLs = [];
@@ -386,7 +386,7 @@ abstract class Rest extends RestLifeCycle
 
     }
 
-    protected static function updateReplace(array &$returnUpdated, array $argv = [], array $primary = null): bool
+    protected static function updateReplace(array &$returnUpdated, array $argv = [], array|null $primary = null): bool
     {
 
         try {

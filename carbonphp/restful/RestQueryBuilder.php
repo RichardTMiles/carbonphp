@@ -658,7 +658,7 @@ TRIGGER;
 
     }
 
-    public static function addInjection($value, array $pdo_column_validation = null): string
+    public static function addInjection($value, array|null $pdo_column_validation = null): string
     {
         switch ($pdo_column_validation[self::PDO_TYPE] ?? null) {
 
@@ -699,7 +699,7 @@ TRIGGER;
      * @return string
      * @throws PrivateAlert
      */
-    private static function buildQueryWhereValues(array $where, array $primary = null): string
+    private static function buildQueryWhereValues(array $where, array|null $primary = null): string
     {
 
         if (null === $primary) {
@@ -943,7 +943,7 @@ TRIGGER;
         return rtrim($sql, ', ');
     }
 
-    private static function buildQueryPaginationValues(array $argv, bool $isSubSelect, array $primary = null): string
+    private static function buildQueryPaginationValues(array $argv, bool $isSubSelect, array|null $primary = null): string
     {
         // pagination [self::PAGINATION][self::LIMIT]
         if (array_key_exists(self::PAGINATION, $argv) && !empty($argv[self::PAGINATION])) {    // !empty should not be in this block - I look all the time
@@ -1094,7 +1094,7 @@ TRIGGER;
      * @return string
      * @throws PrivateAlert
      */
-    protected static function buildSelectQuery(array $primary = null, array $argv = [], bool $isSubSelect = false): string
+    protected static function buildSelectQuery(array|null $primary = null, array $argv = [], bool $isSubSelect = false): string
     {
 
         $sql = 'SELECT '
@@ -1656,7 +1656,7 @@ TRIGGER;
      * @deprecated private use
      *
      */
-    public static function subSelect(array $primary = null, array $argv = [], string $as = ''): callable
+    public static function subSelect(array|null $primary = null, array $argv = [], string $as = ''): callable
     {
 
         return static function () use ($primary, $argv, $as): string {

@@ -163,7 +163,7 @@ class CarbonPHP
      * @param iConfig|string|null $config
      * @param string|null $app_root
      */
-    public function __construct($config = null, string $app_root = null)
+    public function __construct(null|array|string|iConfig $config = null, string|null $app_root = null)
     {
         self::make($config, $app_root);
     }
@@ -172,7 +172,7 @@ class CarbonPHP
      * @param Application|string|null $application
      * @return bool
      */
-    public function __invoke($application = null): bool
+    public function __invoke(Application|null $application = null): bool
     {
         return self::run($application);
     }
@@ -205,7 +205,7 @@ class CarbonPHP
      * @param Application|string|null $application
      * @return bool
      */
-    public static function run($application = null): bool
+    public static function run(Application|string|null $application = null): bool
     {
         try {
 
@@ -488,7 +488,7 @@ class CarbonPHP
      * @param string|null $app_root
      * @todo - php 8 add strict types
      */
-    public static function make(iConfig|array|string $configuration = null, string $app_root = null): void
+    public static function make(iConfig|array|string|null $configuration = null, string|null $app_root = null): void
     {
         try {
 

@@ -940,7 +940,7 @@ class Migrate implements iCommand
 
     // this could be an extremely large file
     // were trying to bypass load balancers by sending the file directly to the client
-    public static function proxyRequest(string $url, string $host = null, bool $verifySSL = true): never
+    public static function proxyRequest(string $url, string|null $host = null, bool $verifySSL = true): never
     {
         $ch = curl_init();
 
@@ -1489,7 +1489,7 @@ HALT;
      * @return  void
      * @throws PrivateAlert
      */
-    public static function showStatus(int $done = null, int $total = null, int $size = null): void
+    public static function showStatus(int|null $done = null, int|null $total = null, int|null $size = null): void
     {
         static $skipStatus = null;
 
@@ -2119,7 +2119,7 @@ HALT;
 
     }
 
-    public static function checkLicense(string $checkLicense, string $licensePHPFilePath = null): void
+    public static function checkLicense(string $checkLicense, string|null $licensePHPFilePath = null): void
     {
 
         try {

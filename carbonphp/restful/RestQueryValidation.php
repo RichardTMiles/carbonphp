@@ -13,7 +13,7 @@ use CarbonPHP\Interfaces\iRestSinglePrimaryKey;
 abstract class RestQueryValidation extends RestAutoTargeting
 {
 
-    public const DISALLOW_PUBLIC_ACCESS = [self::class => 'disallowPublicAccess'];
+    public const array DISALLOW_PUBLIC_ACCESS = [self::class => 'disallowPublicAccess'];
 
     /**
      * returns true if it is a column name that exists and all user validations pass.
@@ -25,7 +25,7 @@ abstract class RestQueryValidation extends RestAutoTargeting
      * @return bool
      * @throws PrivateAlert
      */
-    public static function validateInternalColumn(mixed &$column, string &$operator = null, mixed &$value = null, bool $default = false): bool
+    public static function validateInternalColumn(mixed &$column, string|null &$operator = null, mixed &$value = null, bool $default = false): bool
     {
 
         if (!is_string($column) && !is_int($column)) {
@@ -86,7 +86,7 @@ abstract class RestQueryValidation extends RestAutoTargeting
      * @param string|null $calledFrom
      * @throws PrivateAlert
      */
-    public static function disallowPublicAccess($request, string $calledFrom = null): void
+    public static function disallowPublicAccess($request, string|null $calledFrom = null): void
     {
 
         if (self::$externalRestfulRequestsAPI && !CarbonPHP::$test) {
@@ -240,7 +240,7 @@ abstract class RestQueryValidation extends RestAutoTargeting
     /**
      * @throws PrivateAlert
      */
-    public static function runCustomCallables(mixed &$column, string &$operator = null, mixed &$value = null, bool $default = false): void
+    public static function runCustomCallables(mixed &$column, string|null &$operator = null, mixed &$value = null, bool $default = false): void
     {
 
         $method = self::$REST_REQUEST_METHOD;

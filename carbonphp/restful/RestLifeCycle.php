@@ -99,7 +99,7 @@ abstract class RestLifeCycle extends RestQueryBuilder
     protected static function startRest(
         string                $method,
         array|null            $return,
-        array                 &$args = null,
+        array|null            &$args = null,
         string|int|float|array|null &$primary = null,
         bool                  $subQuery = false): void
     {
@@ -294,7 +294,7 @@ abstract class RestLifeCycle extends RestQueryBuilder
      * @param string $namespace
      * @return bool
      */
-    public static function ExternalRestfulRequestsAPI(string $mainTable, string $primary = null, string $namespace = 'Tables\\', callable $postProcess = null): bool
+    public static function ExternalRestfulRequestsAPI(string $mainTable, string|null $primary = null, string $namespace = 'Tables\\', callable|null $postProcess = null): bool
     {
         global $json;
 
@@ -575,12 +575,12 @@ abstract class RestLifeCycle extends RestQueryBuilder
      * @param string|null $namespace
      * @return bool
      */
-    public static function MatchRestfulRequests(string $prefix = '', string $namespace = null): bool
+    public static function MatchRestfulRequests(string $prefix = '', string|null $namespace = null): bool
     {
 
         return Route::regexMatch(/** @lang RegExp */ '#' . $prefix . 'rest/([A-Za-z\_]{1,256})/?([^/]+)?#',
 
-            static function (string $table, string $primary = null) use ($namespace): void {
+            static function (string $table, string|null $primary = null) use ($namespace): void {
 
                 if ($namespace === null) {
 

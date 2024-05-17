@@ -37,7 +37,7 @@ abstract class RestAutoTargeting extends RestSettings
 
     }
 
-    public static function getDynamicRestClass(string $fullyQualifiedRestClassName, string $mustInterface = null): string
+    public static function getDynamicRestClass(string $fullyQualifiedRestClassName, string|null $mustInterface = null): string
     {
         try {
             static $cache = [];
@@ -169,7 +169,7 @@ abstract class RestAutoTargeting extends RestSettings
 
     }
 
-    public static function parseSchemaSQL(string $sql = null, array $replace = null): array
+    public static function parseSchemaSQL(string|null $sql = null, array|null $replace = null): array
     {
 
         $sql = trim($sql);

@@ -208,7 +208,7 @@ class Session implements SessionHandlerInterface
      * @param string|null $session_id
      * @return Session
      */
-    public static function resume(string $session_id = null): self
+    public static function resume(string|null $session_id = null): self
     {
 
         if ($session_id !== null) {
@@ -230,7 +230,7 @@ class Session implements SessionHandlerInterface
      * Change the callback run if self::update() is called.
      * @param callable|null $lambda
      */
-    public static function updateCallback(callable $lambda = null): void
+    public static function updateCallback(callable|null $lambda = null): void
     {
 
         self::$callback = $lambda;
