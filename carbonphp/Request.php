@@ -88,7 +88,7 @@ class Request   // requires carbon::application;
      * @param mixed $value
      * @param int $time the expiration time of our cookie
      */
-    public static function setCookie(string $key, $value = null, int $time = 604800): void // Week?
+    public static function setCookie(string $key, mixed $value = null, int $time = 604800): void // Week?
     {
 
         if (headers_sent()) {
@@ -468,7 +468,7 @@ class Request   // requires carbon::application;
      * @param int|null $max
      * @return array|bool|mixed
      */
-    public function int(int $min = null, int $max = null)   // inclusive max and min
+    public function int(int|null $min = null, int|null $max = null)   // inclusive max and min
     {
         $array = [];
 

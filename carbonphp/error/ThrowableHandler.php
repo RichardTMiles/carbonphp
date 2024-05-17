@@ -12,7 +12,7 @@ use CarbonPHP\Enums\ThrowableReportDisplay;
 use CarbonPHP\Interfaces\iColorCode;
 use CarbonPHP\Rest;
 use CarbonPHP\Tables\Reports;
-use DirectoryIterator;
+use Mustache_Engine;
 use PDOException;
 use ReflectionException;
 use ReflectionMethod;
@@ -254,7 +254,7 @@ class ThrowableHandler
 
             $json['HEADER_WARNING'] = 'Headers already sent in ' . $file . ' on line ' . $line . '! This can effect the desired response code.';
 
-            $html = ThrowableHandler::generateBrowserReport($json, true);
+            $html = self::generateBrowserReport($json, true);
 
         }
 
@@ -323,26 +323,6 @@ class ThrowableHandler
         if ($return) {
 
             return $error_page;
-
-        }
-
-        // try resetting to the default page if conditions correct, we've already generated a log and optionally printed
-        if (!CarbonPHP::$setupComplete) {
-
-            self::exitAndSendBasedOnRequested($errorForTemplate, $error_page);
-
-        }
-
-        // this causes this ::  View::$forceWrapper = true;
-        // which breaks the recursive check ?? or does it,
-        // we would still need to make it to the view
-        // so it only break when we reach the view? todo - test? -- found error in wp finally, we need a default route check here.. or at least a .... startapplication check application === null? __destruct check
-
-        if (CarbonPHP::$application !== null && self::$attemptRestartAfterError && $count === 2) {
-
-            CarbonPHP::resetApplication();  // we're in prod and we want to recover gracefully...
-
-            self::closeStdoutStderrAndExit(1);
 
         }
 
@@ -730,7 +710,6 @@ class ThrowableHandler
 
             $log_array['LINE'] = (string)$e->getLine();
 
-            /** @noinspection SuspiciousAssignmentsInspection */
             $log_array['JUMP'] = $log_array['FILE'] . ':' . $log_array['LINE'];
 
             $log_array['CODE'] = (string)$e->getCode();
@@ -932,7 +911,6 @@ class ThrowableHandler
 
         }
 
-
         /** @noinspection JsonEncodingApiUsageInspection */
         $message = $parseMessage($log_array);
 
@@ -1034,6 +1012,11 @@ class ThrowableHandler
      */
     protected static function generateCallTrace(Throwable|null $e = null): array
     {
+        static $count = 0;
+
+        if (0 !== $count++) {
+            print_r($e);
+        }
 
         $_SERVER["CONTENT_TYPE"] ??= '';
 
@@ -1173,7 +1156,26 @@ DESCRIPTION;
 
         $mustacheInfo['fullErrorReport'] = json_encode($message, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
-        return (new \Mustache_Engine())->render(self::$errorTemplate, $mustacheInfo);
+        try {
+
+            self::stop();
+
+            error_reporting(self::$level ^ (E_NOTICE | E_WARNING | E_DEPRECATED));
+
+            $return =  (new Mustache_Engine())->render(self::$errorTemplate, $mustacheInfo);
+
+            self::start();
+
+            return $return;
+
+        } catch (Throwable) {
+
+            sortDump(['Mustache_Engine Failed', $mustacheInfo]);
+
+            exit(11);
+
+        }
+
     }
 
     public static function statusText(int $code = 0): ?string

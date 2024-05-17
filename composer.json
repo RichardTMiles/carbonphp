@@ -17,7 +17,7 @@
   "prefer-stable": true,
   "require": {
     "php": ">=8.3",
-    "mustache/mustache": "^2.13.0",
+    "mustache/mustache": "^v2.14.2",
     "psr/log": "1.1.4",
     "ext-json": "*",
     "ext-pdo": "*",

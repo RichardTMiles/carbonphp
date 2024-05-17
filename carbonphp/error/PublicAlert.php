@@ -24,17 +24,18 @@ namespace CarbonPHP\Error;
  * I assume you use bootstrap (particularly AdminLTE) and carbon.js for the rest of
  * this file.
  */
+class PublicAlert extends CustomException
+{
 
-class PublicAlert extends CustomException {
-
-    public static function alertSet() : bool {
+    public static function alertSet(): bool
+    {
         global $json;
         return ($json['alert']['danger'] ?? false) ||
             ($json['alert']['error'] ?? false) ||
             ($json['alert']['input'] ?? false);
     }
 
-    public static function JsonAlert($message, $title, $type = 'danger', $icon = null, $status = 400, $intercept = true, $stack = true) : void
+    public static function JsonAlert($message, $title, $type = 'danger', $icon = null, $status = 400, $intercept = true, $stack = true): void
     {
         global $json;
 
@@ -71,14 +72,11 @@ class PublicAlert extends CustomException {
     /** Add an alert to the array. If the view is not executed, CarbonPHP will not
      * handle the global alert.
      * @param string $message the message to be stored in the alert variable
-     * @param string $code you may choose between success, info, danger, or warning
+     * @param int $code you may choose between success, info, danger, or warning
      */
-    private static function alert(string $message, string $code): void
+    private static function alert(string $message, int $code): void
     {
         global $json;
-        if (($message[-1] ?? '') === '.' && $code !== 'success' && $code !== 'info') {
-            $message .= ' Contact us if problem persists.';
-        }
         $json['alert'][$code][] = $message;
     }
 
@@ -122,9 +120,9 @@ class PublicAlert extends CustomException {
     /**
      * PublicAlert constructor.
      * @param null $message
-     * @param string $code
+     * @param int $code
      */
-    public function __construct($message = null, $code = 'warning')
+    public function __construct($message = null, int $code = 400)
     {
 
         if (empty($message)) {
@@ -133,9 +131,11 @@ class PublicAlert extends CustomException {
 
             static::alert($message, $code);
 
-        }
+        } else {
 
-        parent::__construct($message, 0);
+            parent::__construct($message, $code);
+
+        }
 
     }
 
@@ -154,7 +154,7 @@ class PublicAlert extends CustomException {
      */
     public function __call($code, $message)
     {
-        static::alert( $message[0], $code );
+        static::alert($message[0], $code);
     }
 
     /** The same as __call() but in a static context.
@@ -166,7 +166,7 @@ class PublicAlert extends CustomException {
      */
     public static function __callStatic($code, $message)
     {
-        static::alert( $message[0], $code );
+        static::alert($message[0], $code);
     }
 
 
