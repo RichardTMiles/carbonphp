@@ -1187,7 +1187,11 @@ HALT;
 
                 $ch = curl_init();
 
-                ColorCode::colorCode("Attempt ($attempt) to get possibly large POST response\n$url\nStoring to (file://$toLocalFilePath)\n" . print_r($post, true));
+                if (CarbonPHP::$verbose) {
+
+                    ColorCode::colorCode("Attempt ($attempt) to get possibly large POST response\n$url\nStoring to (file://$toLocalFilePath)\n" . print_r($post, true));
+
+                }
 
                 curl_setopt($ch, CURLOPT_URL, $url);
 
@@ -1199,7 +1203,11 @@ HALT;
 
                 $timeout = self::$timeout;
 
-                ColorCode::colorCode("Setting the post ($url) timeout to ($timeout) <" . self::secondsToReadable($timeout) . '> with body (' . $query . ')');
+                if (CarbonPHP::$verbose) {
+
+                    ColorCode::colorCode("Setting the post ($url) timeout to ($timeout) <" . self::secondsToReadable($timeout) . '> with body (' . $query . ')');
+
+                }
 
                 curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
 

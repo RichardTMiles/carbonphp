@@ -63,7 +63,6 @@ abstract class RestLifeCycle extends RestQueryBuilder
     {
         if (true === self::$suppressErrorsAndReturnFalse
             && false === self::$externalRestfulRequestsAPI
-            && CarbonPHP::$is_running_production
             && false === CarbonPHP::$carbon_is_root
             && false === CarbonPHP::$test) {
 
