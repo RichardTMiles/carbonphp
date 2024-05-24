@@ -179,8 +179,9 @@ interface iRest
     public const PRECOMMIT = self::REST_REQUEST_PRECOMMIT_CALLBACKS;
     public const REST_REQUEST_PREPROCESS_CALLBACKS = 'PREPROCESS';  // had to change from 0 so we could array merge recursively.
     public const PREPROCESS = self::REST_REQUEST_PREPROCESS_CALLBACKS;
-    public const REST_REQUEST_FINNISH_CALLBACKS = 'FINISH';
-    public const FINISH = self::REST_REQUEST_FINNISH_CALLBACKS;
+    public const REST_REQUEST_FINNISH_CALLBACKS = self::FINISH;
+    public const FINISH = 'FINISH';
+    public const PRE_EXECUTE = self::FINISH;
     public const VALIDATE_C6_ENTITY_ID_REGEX = '#^' . Route::MATCH_C6_ENTITY_ID_REGEX . '$#';
 
     public const COLUMN = 'COLUMN';

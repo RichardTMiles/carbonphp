@@ -254,6 +254,19 @@ abstract class RestQueryBuilder extends RestQueryValidation
             // this is just a technicality as name could be injected but also referenced in the query
             $columnOrInjection = self::addInjection($columnOrInjection, [self::PDO_TYPE => null]);
 
+            if (count($rest) === 1 && is_string($rest[0])) {
+
+                $column = $rest[0];
+
+                if (self::validateInternalColumn($column, $aggregate)
+                    && self::$compiled_PDO_validations[$column][self::MYSQL_TYPE] === 'binary') {
+
+                    $columnOrInjection = "UNHEX($columnOrInjection)";
+
+                }
+
+            }
+
         }
 
         return $columnOrInjection;
@@ -388,7 +401,7 @@ abstract class RestQueryBuilder extends RestQueryValidation
             case self::NOT_IN:
             case self::IN:
 
-                return self::inAggergaation($column, $aggregate, $name);
+                return self::inAggregate($column, $aggregate, $name);
 
             case self::IS_NOT:
             case self::IS:
@@ -478,13 +491,8 @@ abstract class RestQueryBuilder extends RestQueryValidation
 
     }
 
-    public static function inAggergaation($column, $aggregate, array $values)
+    public static function inAggregate($column, $aggregate, array $values): string
     {
-        if (false === is_array($values)) {
-
-            throw new PrivateAlert('Rest IN aggregate error (' . $column . ') required an array!');
-
-        }
 
         $returnIsAggregate = [];
 
@@ -1733,7 +1741,7 @@ TRIGGER;
 
                 }
 
-                return self::inAggergaation($valueOne, $operator, $valueTwo);
+                return self::inAggregate($valueOne, $operator, $valueTwo);
 
             case iRest::IS:
             case str_replace('_', ' ', iRest::IS_NOT):

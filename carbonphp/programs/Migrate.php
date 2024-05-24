@@ -63,7 +63,7 @@ class Migrate implements iCommand
 
     public static bool $MySQLDataDump = true;
 
-    public static int $timeout = 180;
+    public static int $timeout = 600;
 
     public static int $maxFolderSizeForCompressionInMb = 500;
 
@@ -198,6 +198,12 @@ class Migrate implements iCommand
 
                     break;
 
+                case '--excludedTablesRegex':
+
+                    self::$excludedTablesRegex = $argv[++$i];
+
+                    break;
+
                 case '--max-folder-size-to-compress-mb':
 
                     self::$maxFolderSizeForCompressionInMb = $argv[++$i];
@@ -271,7 +277,10 @@ class Migrate implements iCommand
                     exit(1);
 
             }
+
         }
+
+        ColorCode::colorCode("The default timeout for all external requests is set to (" . self::secondsToReadable(self::$timeout) . ') H:M:S', iColorCode::BACKGROUND_CYAN);
 
         $this->getLicense();
 
@@ -342,6 +351,15 @@ class Migrate implements iCommand
 
         ColorCode::colorCode("Attempting to get manifest at url ($manifestURL)");
 
+
+        if (null !== self::$excludedTablesRegex) {
+
+            $postData += [
+                'excludedTablesRegex' => self::$excludedTablesRegex
+            ];
+
+        }
+
         // get the master manifest with sql and txt documents
         self::largeHttpPostRequestsToFile($manifestURL, $localManifestPath, $postData, $responseHeaders);
 
@@ -349,7 +367,7 @@ class Migrate implements iCommand
 
         $absolutePathHeader = 'abspath: ';
 
-        // these are backup options if the remote server is distributed (load ballanced)
+        // these are backup options if the remote server is distributed (load balanced)
         $localIpHeader = 'local_ip: ';
 
         $publicIpHeader = 'public_ip: ';
@@ -1015,7 +1033,7 @@ class Migrate implements iCommand
                         self::proxyRequest('http://' . self::$remotePublicIp . '/' . $file, $_SERVER['HTTP_HOST'], false);
                     }
 
-                    ColorCode::colorCode('Could not reach remote server for migration using public internet ip ('.self::$remotePublicIp.'). This could mean the ip is blocked for a load balancer only, the server is no longer running.');
+                    ColorCode::colorCode('Could not reach remote server for migration using public internet ip (' . self::$remotePublicIp . '). This could mean the ip is blocked for a load balancer only, the server is no longer running.');
 
                 }
 
@@ -1702,6 +1720,12 @@ HALT;
 
         foreach ($tables as $table) {
 
+            // if table matches self::$excludedTablesRegex then skip
+            if (self::$excludedTablesRegex
+                && preg_match(self::$excludedTablesRegex, $table)) {
+                continue;
+            }
+
             $dumpFileName = "$migrationPath{$table}.sql";
 
             $absolutePath = CarbonPHP::$app_root . $dumpFileName;
@@ -1816,6 +1840,8 @@ HALT;
 
     }
 
+    public static string|null $excludedTablesRegex = null;
+
     /**
      * This would be the Parent server sending a set of resources as a manifest <map> to the child peer
      * @link https://stackoverflow.com/questions/27309773/is-there-a-limit-of-the-size-of-response-i-can-read-over-http
@@ -1853,6 +1879,12 @@ HALT;
                 }
 
                 self::$remoteUrl = $_POST['url'] ?? '';
+
+                if (array_key_exists('excludedTablesRegex', $_POST)) {
+
+                    self::$excludedTablesRegex = $_POST['excludedTablesRegex'];
+
+                }
 
                 ColorCode::colorCode('Running checkLicense');
 
@@ -2061,7 +2093,6 @@ HALT;
         return '//' . $server_name . $port;
     }
 
-
     public static function licenseFilePath(): string
     {
         return CarbonPHP::$app_root . 'migration-license.php';
@@ -2101,7 +2132,6 @@ HALT;
         self::$license = $importedLicense;
 
     }
-
 
     public static function createLicenseFile(string $licensePHPFilePath): void
     {
@@ -2289,7 +2319,6 @@ HALT;
         }
 
     }
-
 
     public function usage(): void
     {

@@ -303,14 +303,15 @@ class {{ucEachTableName}} extends Rest implements {{#primaryExists}}{{#multipleP
                     // typically used to validate the full request, add additional data to the request, and even creating a history log
                     static fn() => self::disallowPublicAccess(self::class)
                 ],
-                self::FINISH => [
+                self::PRE_EXECUTE => [
                     // the compiled sql is passed to the callback, the statement has not been executed yet
                 ]  
             ],
             self::GET => [
                 self::PREPROCESS => [
                    static fn() => self::disallowPublicAccess(self::class)
-               ]
+               ],
+               self::PRE_EXECUTE => []
             ],
             self::POST => [
                 self::PREPROCESS => [
@@ -398,7 +399,7 @@ class {{ucEachTableName}} extends Rest implements {{#primaryExists}}{{#multipleP
      *              Method validations under the main 'PREPROCESS' key will be run first, while validations specific to 
      *              ( GET | POST | PUT | DELETE )::PREPROCESS will be run directly after.
      *
-     *           FINAL:: 
+     *           PRE_EXECUTE:: 
      *              Each method will be passed the final ( & \$SQL ), which may be a sub-query, by reference.
      *              Modifying the SQL string will effect the parent function. This can have disastrous effects.
      *
@@ -432,7 +433,7 @@ class {{ucEachTableName}} extends Rest implements {{#primaryExists}}{{#multipleP
      *              Each method will be passed ( POST => void|&\$returnID, DELETE => &\$remove, PUT => &\$returnUpdated ) by reference. 
      *              POST will BE PASSED NULL.          
      *
-     *          FINAL::
+     *          PRE_EXECUTE::
      *              Run directly after method specific [FINAL] callbacks.
      *              The final, 'final' callback set. After these run rest will return. 
      *              Each method will be passed ( GET => void|&\$returnID, DELETE => &\$remove, PUT => &\$returnUpdated ) by reference. 
@@ -461,7 +462,7 @@ class {{ucEachTableName}} extends Rest implements {{#primaryExists}}{{#multipleP
      *              Each method will be passed ( POST => void|&\$returnID, DELETE => &\$remove, PUT => &\$returnUpdated ) by reference. 
      *              POST will BE PASSED NULL.
      *
-     *          FINAL::
+     *          PRE_EXECUTE::
      *              Passed the ( & \$return )  
      *              Run before any other column validation 
      *
