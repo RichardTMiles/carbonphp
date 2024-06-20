@@ -1162,7 +1162,9 @@ DESCRIPTION;
 
             error_reporting(self::$level ^ (E_NOTICE | E_WARNING | E_DEPRECATED));
 
-            $return =  (new Mustache_Engine())->render(self::$errorTemplate, $mustacheInfo);
+            // @note if the Mustache_Engine fails, then tries to re-load itsself the message will say "Class "Mustache_Engine" not found"
+            // This is very deceptive as the class is found, but failing to be loaded via compile time error. E_DEPRECATED is the first sign
+            $return =  (new Mustache_Engine)->render(self::$errorTemplate, $mustacheInfo);
 
             self::start();
 

@@ -48,7 +48,7 @@ abstract class Swagger
 
 
 
-        return (new \Mustache_Engine())->render(
+        return (new \Mustache_Engine)->render(
             /** @lang Handlebars */ <<<HTML
                   
 

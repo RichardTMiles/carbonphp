@@ -398,7 +398,7 @@ END;
         }
 
         // This is our mustache template engine implemented in php, used for rendering user content
-        $mustache = new \Mustache_Engine();
+        $mustache = new \Mustache_Engine;
 
         $verbose and var_dump(MySQL::$mysqldump);
 
