@@ -51,7 +51,7 @@ abstract class Background
 
     }
 
-    public static function executeAndCheckStatus(string $command, bool $exitOnFailure = true, array &$output = null): int
+    public static function executeAndCheckStatus(string $command, bool $exitOnFailure = true, array|null &$output = null): int
     {
 
         $output = [];
