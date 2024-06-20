@@ -4,6 +4,7 @@ namespace CarbonPHP;
 
 use CarbonPHP\Error\PrivateAlert;
 use CarbonPHP\Error\PublicAlert;
+use CarbonPHP\Extras\MustacheEngine;
 
 /**
  * Class View
@@ -85,7 +86,7 @@ class View
 
         if (pathinfo($file, PATHINFO_EXTENSION) === 'hbs') {
 
-            $mustache = new \Mustache_Engine;
+            $mustache = new MustacheEngine;
 
             if (CarbonPHP::$socket || (!self::$forceWrapper && CarbonPHP::$pjax && CarbonPHP::$ajax)) {        // Send JSON To Socket
 
@@ -116,7 +117,7 @@ class View
             #################### Send the Outer Wrapper
         } else if (pathinfo(self::$wrapper, PATHINFO_EXTENSION) === 'hbs') {   // Outer Wrapper is Mustache
             $json['content'] = $buffer;
-            $mustache = $mustache ?? new \Mustache_Engine;
+            $mustache = $mustache ?? new MustacheEngine;
             print $mustache->render(file_get_contents(self::$wrapper), $json);
         } else {                                                                       // Outer Wrapper is PHP?
             self::$bufferedContent = $buffer;

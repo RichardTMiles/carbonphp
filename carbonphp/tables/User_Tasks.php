@@ -332,7 +332,7 @@ class User_Tasks extends Rest implements iRestSinglePrimaryKey
      *              Method validations under the main 'PREPROCESS' key will be run first, while validations specific to 
      *              ( GET | POST | PUT | DELETE )::PREPROCESS will be run directly after.
      *
-     *           FINAL:: 
+     *           PRE_EXECUTE:: 
      *              Each method will be passed the final ( & $SQL ), which may be a sub-query, by reference.
      *              Modifying the SQL string will effect the parent function. This can have disastrous effects.
      *
@@ -366,7 +366,7 @@ class User_Tasks extends Rest implements iRestSinglePrimaryKey
      *              Each method will be passed ( POST => void|&$returnID, DELETE => &$remove, PUT => &$returnUpdated ) by reference. 
      *              POST will BE PASSED NULL.          
      *
-     *          FINAL::
+     *          PRE_EXECUTE::
      *              Run directly after method specific [FINAL] callbacks.
      *              The final, 'final' callback set. After these run rest will return. 
      *              Each method will be passed ( GET => void|&$returnID, DELETE => &$remove, PUT => &$returnUpdated ) by reference. 
@@ -395,7 +395,7 @@ class User_Tasks extends Rest implements iRestSinglePrimaryKey
      *              Each method will be passed ( POST => void|&$returnID, DELETE => &$remove, PUT => &$returnUpdated ) by reference. 
      *              POST will BE PASSED NULL.
      *
-     *          FINAL::
+     *          PRE_EXECUTE::
      *              Passed the ( & $return )  
      *              Run before any other column validation 
      *

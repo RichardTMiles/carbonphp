@@ -12,6 +12,7 @@ use CarbonPHP\CarbonPHP;
 use CarbonPHP\Error\PrivateAlert;
 use CarbonPHP\Error\PublicAlert;
 use CarbonPHP\Error\ThrowableHandler;
+use CarbonPHP\Extras\MustacheEngine;
 use CarbonPHP\Interfaces\iColorCode;
 use CarbonPHP\Interfaces\iCommand;
 use CarbonPHP\Interfaces\iRest;
@@ -398,7 +399,7 @@ END;
         }
 
         // This is our mustache template engine implemented in php, used for rendering user content
-        $mustache = new \Mustache_Engine;
+        $mustache = new MustacheEngine;
 
         $verbose and var_dump(MySQL::$mysqldump);
 

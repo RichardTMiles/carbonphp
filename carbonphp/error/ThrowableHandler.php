@@ -9,10 +9,10 @@ use CarbonPHP\Abstracts\Files;
 use CarbonPHP\CarbonPHP;
 use CarbonPHP\Database;
 use CarbonPHP\Enums\ThrowableReportDisplay;
+use CarbonPHP\Extras\MustacheEngine;
 use CarbonPHP\Interfaces\iColorCode;
 use CarbonPHP\Rest;
 use CarbonPHP\Tables\Reports;
-use Mustache_Engine;
 use PDOException;
 use ReflectionException;
 use ReflectionMethod;
@@ -1164,7 +1164,7 @@ DESCRIPTION;
 
             // @note if the Mustache_Engine fails, then tries to re-load itsself the message will say "Class "Mustache_Engine" not found"
             // This is very deceptive as the class is found, but failing to be loaded via compile time error. E_DEPRECATED is the first sign
-            $return =  (new Mustache_Engine)->render(self::$errorTemplate, $mustacheInfo);
+            $return =  (new MustacheEngine)->render(self::$errorTemplate, $mustacheInfo);
 
             self::start();
 

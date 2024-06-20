@@ -49,6 +49,7 @@
     "psr-4": {
       "CarbonPHP\\Abstracts\\": "carbonphp/abstracts/",
       "CarbonPHP\\Error\\": "carbonphp/error/",
+      "CarbonPHP\\Extras\\": "carbonphp/extras/",
       "CarbonPHP\\Enums\\": "carbonphp/enums/",
       "CarbonPHP\\Helpers\\": "carbonphp/helpers/",
       "CarbonPHP\\Interfaces\\": "carbonphp/interfaces/",
