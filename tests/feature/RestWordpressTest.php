@@ -67,7 +67,7 @@ final class RestWordpressTest extends Config
     }
 
     /** @noinspection PhpUnhandledExceptionInspection */
-    public static function createUser(array $data = null) : string {
+    public static function createUser(array|null $data = null) : string {
         try {
             $data ??= [
                 Wp_Users::USER_LOGIN => 'WookieeWorking',

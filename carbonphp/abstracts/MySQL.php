@@ -157,7 +157,7 @@ IDENTIFIED;
      * @return string
      * @throws PublicAlert
      */
-    public static function MySQLDump(string $mysqldump = null, bool $data = false, bool $schemas = true, string $outputFile = null, string $otherOption = '', string $specificTable = null): string
+    public static function MySQLDump(string $mysqldump = null, bool $data = false, bool $schemas = true, string|null $outputFile = null, string $otherOption = '', string $specificTable = null): string
     {
 
         $specificTable ??= '';
