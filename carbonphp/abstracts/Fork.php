@@ -59,7 +59,7 @@ abstract class Fork
      *
      * @param array $tasks Array of callables to be executed in child processes.
      */
-    public static function executeInChildProcesses(array $tasks, callable $returnHandler = null): void
+    public static function executeInChildProcesses(array $tasks, callable|null $returnHandler = null): void
     {
         $childPids = [];
 

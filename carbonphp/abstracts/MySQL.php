@@ -68,7 +68,7 @@ IDENTIFIED;
     }
 
 
-    public static function buildCNF($cnfFile = null): string
+    public static function buildCNF(string|null $cnfFile = null): string
     {
 
         if ('' !== self::$mysql) {
@@ -157,7 +157,7 @@ IDENTIFIED;
      * @return string
      * @throws PublicAlert
      */
-    public static function MySQLDump(string|null $mysqldump = null, bool $data = false, bool $schemas = true, string|null $outputFile = null, string $otherOption = '', string $specificTable = null): string
+    public static function MySQLDump(string|null $mysqldump = null, bool $data = false, bool $schemas = true, string|null $outputFile = null, string $otherOption = '', string|null $specificTable = null): string
     {
 
         $specificTable ??= '';

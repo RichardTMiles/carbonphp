@@ -22,7 +22,7 @@ interface iRestMultiplePrimaryKeys
      * @param array $argv
      * @return bool
      */
-    public static function delete(array &$remove, array $primary = null, array $argv = []): bool;      // Delete all data from a tables given its primary key
+    public static function delete(array &$remove, array|null $primary = null, array $argv = []): bool;      // Delete all data from a tables given its primary key
 
     /**
      * @param array $return
@@ -30,7 +30,7 @@ interface iRestMultiplePrimaryKeys
      * @param array $argv - column names desired to be in our array
      * @return bool
      */
-    public static function get(array &$return, array $primary = null, array $argv = []): bool;   // Get tables columns given in argv (usually an array) and place them into our array
+    public static function get(array &$return, array|null $primary = null, array $argv = []): bool;   // Get tables columns given in argv (usually an array) and place them into our array
 
     /**
      * @param array $post
@@ -46,5 +46,5 @@ interface iRestMultiplePrimaryKeys
      * @param array $argv   - an associative array of Column => Value pairs
      * @return bool  - true on success false on failure
      */
-    public static function put(array &$returnUpdated, array $primary = null, array $argv = []): bool;
+    public static function put(array &$returnUpdated, array|null $primary = null, array $argv = []): bool;
 }
