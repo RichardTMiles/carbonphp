@@ -6,6 +6,11 @@ use CarbonPHP\Error\ThrowableHandler;
 use Mustache_Engine;
 use Throwable;
 
+# @note - this is a little hackish on purpose.
+# Because were abstracting it to remove E_DEPRECATED errors, those will be thrown at compile time, not runtime.
+# This is tricky to catch as autoloading makes this feel like a runtime error, but it is not.
+error_reporting(ThrowableHandler::$level ^ (E_NOTICE | E_WARNING | E_DEPRECATED));
+
 class MustacheEngine extends Mustache_Engine
 {
     public function __construct(array $options = [])
