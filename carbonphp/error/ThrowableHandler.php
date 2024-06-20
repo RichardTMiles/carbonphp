@@ -1156,27 +1156,7 @@ DESCRIPTION;
 
         $mustacheInfo['fullErrorReport'] = json_encode($message, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
-        try {
-
-            self::stop();
-
-            error_reporting(self::$level ^ (E_NOTICE | E_WARNING | E_DEPRECATED));
-
-            // @note if the Mustache_Engine fails, then tries to re-load itsself the message will say "Class "Mustache_Engine" not found"
-            // This is very deceptive as the class is found, but failing to be loaded via compile time error. E_DEPRECATED is the first sign
-            $return =  (new MustacheEngine)->render(self::$errorTemplate, $mustacheInfo);
-
-            self::start();
-
-            return $return;
-
-        } catch (Throwable) {
-
-            sortDump(['Mustache_Engine Failed', $mustacheInfo]);
-
-            exit(11);
-
-        }
+        return (new MustacheEngine)->render(self::$errorTemplate, $mustacheInfo);
 
     }
 

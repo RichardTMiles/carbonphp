@@ -24,7 +24,7 @@ class MustacheEngine extends Mustache_Engine
 
         } catch (Throwable $e) {
 
-            sortDump(['Mustache_Engine Failed', $e->getMessage(), $e->getTraceAsString()]);
+            sortDump(['Mustache_Engine __construct Failed', $e->getMessage(), $e->getTraceAsString()]);
 
             exit(11);
 
@@ -49,7 +49,7 @@ class MustacheEngine extends Mustache_Engine
 
         } catch (Throwable $e) {
 
-            sortDump(['Mustache_Engine Failed', $e->getMessage(), $context]);
+            sortDump(['Mustache_Engine Render Failed', $e->getMessage(), $context]);
 
             exit(11);
 
