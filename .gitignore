@@ -29,6 +29,7 @@ createTables.sql
 /logs
 /temp
 /view
+*.zip
 
 # wordpress
 /wp-content/index.php
