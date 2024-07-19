@@ -3,7 +3,6 @@
 namespace CarbonPHP\Programs;
 
 use CarbonPHP\Abstracts\ColorCode;
-use CarbonPHP\Abstracts\Htaccess;
 use CarbonPHP\Abstracts\Pipe;
 use CarbonPHP\CarbonPHP;
 use CarbonPHP\Database;
@@ -149,9 +148,165 @@ class WebSocket extends WsFileStreams implements iCommand
 
         self::$socket = WsConnection::startTcpServer(self::$ssl, self::$cert, self::$pass, self::$host, self::$port);
 
-        Htaccess::updateHtaccessWebSocketPort(self::$port);
-
         ColorCode::colorCode("Stream Socket Server Created on ws" . (self::$ssl ? 's' : '') . '://' . self::$host . ':' . self::$port . '/ ');
+
+    }
+
+    public static function handleSingleUserConnections(): never
+    {
+
+        // get all headers has a polyfill in our function.php
+        $headers = getallheaders();
+
+        // Now we start the buffer and write to it using standard io (print, echo, print_r,..) and encode it as one block until we flush it.
+        $flush = self::outputBufferWebSocketEncoder();
+
+        self::handshake(STDOUT, $headers);
+
+        ColorCode::colorCode('Handshake complete, starting WebSocket server.');
+
+        print posix_getpid() . PHP_EOL;
+
+        $flush();
+
+        // Here you can handle the WebSocket upgrade logic
+        /** @noinspection PhpUndefinedFunctionInspection  - Proposed RFC */
+        $websocket = apache_connection_stream();
+
+        stream_set_blocking($websocket, false);
+
+        if (!is_resource($websocket)) {
+
+            throw new Error('INPUT is not a valid resource');
+
+        }
+
+        $fifoPath = self::FIFO_DIRECTORY . session_id() . '.fifo';
+
+        $myFifo = Pipe::named($fifoPath);
+
+        $loop = 0;
+
+        while (true) {
+
+            ColorCode::colorCode("Loop: $loop");
+
+            try {
+
+                ++$loop;
+
+                print "Loop: $loop\n";
+
+                $flush();
+
+                sleep(1);
+
+                if (!is_resource($websocket)) {
+
+                    throw new Error('STDIN is not a valid resource');
+
+                }
+
+                $flush();
+
+                $read = [$websocket, $myFifo];
+
+                // 3 should be set to a reasonably high value for your application, lower is better for debugging
+                $number = stream_select($read, $write, $error, 3);
+
+                if ($number === 0) {
+
+                    ColorCode::colorCode("No streams are requesting to be processed. (loop: $loop )", iColorCode::CYAN);
+
+                    continue;
+
+                }
+
+                ColorCode::colorCode("$number, stream(s) are requesting to be processed.");
+
+                foreach ($read as $connection) {
+
+                    switch ($connection) {
+                        case $websocket:
+                            $data = self::decode($connection);
+                            switch ($data['opcode']) {
+                                default:
+                                case self::BINARY:
+                                case self::CLOSE:
+                                    exit(0);
+
+                                case self::PING :
+                                    @fwrite($connection, self::encode('', self::PONG));
+                                    break;
+
+                                case self::TEXT:
+                                    $PrintPayload = print_r($data['payload'], true);
+
+                                    ColorCode::colorCode("The following was received ($PrintPayload)");
+
+                                    print $data['payload']['name'] . ', has sent :: ' . $data['payload']['message'] . PHP_EOL;
+
+                                    $flush();
+
+                                    if (!is_string($data)) {
+                                        $data = json_encode($data, JSON_THROW_ON_ERROR) . PHP_EOL;
+                                        print $data;
+                                        $flush();
+                                    }
+
+                                    $fifoFiles = glob(self::FIFO_DIRECTORY . '*.fifo');
+
+                                    foreach ($fifoFiles as $fifoPath) {
+                                        // Process each .fifo file
+
+                                        if (str_ends_with($fifoPath, session_id() . '.fifo')) {
+
+                                            // no need to update our own fifo with info we already have
+                                            continue;
+
+                                        }
+
+                                        // Open the FIFO for writing
+                                        $fifo = fopen($fifoPath, 'wb');
+
+                                        if ($fifo === false) {
+                                            print ("Failed to open FIFO for writing");
+                                            exit(2);
+                                        }
+
+                                        @fwrite($fifo, $data);
+
+                                        @fclose($fifo);
+
+                                    }
+
+                                    $flush();
+
+                                    break;
+                            }
+
+
+                            break;
+                        case $myFifo:
+                            // Read from the FIFO until the buffer is empty
+                            $data = fread($myFifo, 4096); // Read up to 4096 bytes at a time
+                            echo $data;
+                            $flush();
+                            break;
+                        default:
+                            print('Unknown read connection!');
+                            exit(1);
+                    }
+
+                }
+
+            } catch (Throwable $e) {
+
+                ColorCode::colorCode(print_r($e, true), iColorCode::BACKGROUND_RED);
+
+            }
+
+        }
 
     }
 
@@ -209,116 +364,6 @@ class WebSocket extends WsFileStreams implements iCommand
         };
 
     }
-
-    /** @noinspection ForgottenDebugOutputInspection */
-    public static function handleSingleUserConnections(): void
-    {
-
-        if (!(str_contains($_SERVER['HTTP_CONNECTION'] ?? '', 'Upgrade')
-            && str_contains($_SERVER['HTTP_UPGRADE'] ?? '', 'websocket'))) {
-
-            // Here you can handle the WebSocket upgrade logic
-            return;
-
-        }
-
-        CarbonPHP::$socket = true;
-
-        CarbonPHP::$verbose = true;
-
-        file_put_contents(CarbonPHP::$app_root . '/logs/request/' . microtime() . '.txt', print_r($_SERVER, true));
-
-        // get all headers has a polyfill in our function.php
-        $headers = getallheaders();
-
-        WsBinaryStreams::handshake(STDOUT, $headers);
-
-        $flush = self::outputBufferWebSocketEncoder();
-
-        self::$userConnectionRelationships[] = new WsUserConnectionRelationship(0, null, STDIN, session_id(), $headers, $_SERVER['REMOTE_PORT'], $_SERVER['REMOTE_ADDR']);
-
-        $loop = 0;
-
-        self::$socket = STDOUT;
-
-        if (!is_resource(INPUT)) {
-
-            throw new Error('INPUT is not a valid resource');
-
-        }
-
-        sleep(5);
-
-        while (true) {
-
-            try {
-
-                if (!is_resource(STDIN)) {
-
-                    throw new Error('STDIN is not a valid resource');
-
-                }
-
-                $flush();
-
-                Database::close();
-
-                Database::close(true);
-
-                $json = file_get_contents('php://input');
-
-                echo 'fuck '. $json;
-
-                print_r($_POST);
-
-                $flush();
-
-                sleep(30);
-                exit(0);
-
-                $read = [STDIN, INPUT];
-
-                $number = stream_select($read, $write, $error, self::$streamSelectSeconds);
-
-                if ($number === 0) {
-
-                    ColorCode::colorCode("No streams are requesting to be processed. (loop: $loop; users: " . count(self::$userResourceConnections) . ") ", iColorCode::CYAN);
-
-                    continue;
-
-                }
-
-                ColorCode::colorCode("$number, stream(s) are requesting to be processed.");
-
-                $flush();
-
-                foreach ($read as $connection) {
-
-                    if ($connection === STDIN) {
-
-                        $data = self::decode($connection);
-
-                        print_r($data);
-
-                    }
-
-                }
-
-                $flush();
-
-                sleep(1);
-
-
-            } catch (Throwable $e) {
-
-                ThrowableHandler::generateLogAndExit($e);
-
-            }
-
-        }
-
-    }
-
 
     public function run(array $argv): void
     {

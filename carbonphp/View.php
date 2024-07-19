@@ -3,7 +3,6 @@
 namespace CarbonPHP;
 
 use CarbonPHP\Error\PrivateAlert;
-use CarbonPHP\Error\PublicAlert;
 use CarbonPHP\Extras\MustacheEngine;
 
 /**

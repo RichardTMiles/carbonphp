@@ -71,7 +71,7 @@ abstract class WsConnection
 
                         if (is_string($data['payload'])) {
 
-                            WebSocket::forkStartApplication($data['payload'], $information, $connection);
+                            WebSocket::forkStartApplication ($data['payload'], $information, $connection);
 
                         } else {
 

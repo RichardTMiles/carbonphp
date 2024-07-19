@@ -4,7 +4,6 @@ namespace CarbonPHP;
 
 use CarbonPHP\Abstracts\ColorCode;
 use CarbonPHP\Abstracts\Files;
-use CarbonPHP\Abstracts\Htaccess;
 use CarbonPHP\Abstracts\Serialized;
 use CarbonPHP\Enums\ThrowableReportDisplay;
 use CarbonPHP\Error\PrivateAlert;
@@ -40,7 +39,7 @@ class CarbonPHP
 {
 
     // folder locations
-    public const CARBON_ROOT = __DIR__ . DIRECTORY_SEPARATOR;
+    public const string CARBON_ROOT = __DIR__ . DIRECTORY_SEPARATOR;
     public static bool $carbon_is_root = false;
     public static string $public_carbon_root = '/';         // uri
     public static string $app_root;
@@ -57,74 +56,74 @@ class CarbonPHP
     public static bool $setupComplete = false;
 
     // CarbonPHP Configuration Keys
-    public const DATABASE = 'DATABASE';
-    public const DB_HOST = 'DB_HOST';
-    public const DB_READER = 'DB_READER';
-    public const DB_PORT = 'DB_PORT';
-    public const DB_NAME = 'DB_NAME';
-    public const DB_USER = 'DB_USER';
-    public const DB_PASS = 'DB_PASS';
-    public const REBUILD = 'REBUILD';
-    public const REBUILD_WITH_CARBON_TABLES = 'REBUILD_WITH_CARBON_TABLES';
+    public const string DATABASE = 'DATABASE';
+    public const string DB_HOST = 'DB_HOST';
+    public const string DB_READER = 'DB_READER';
+    public const string DB_PORT = 'DB_PORT';
+    public const string DB_NAME = 'DB_NAME';
+    public const string DB_USER = 'DB_USER';
+    public const string DB_PASS = 'DB_PASS';
+    public const string REBUILD = 'REBUILD';
+    public const string REBUILD_WITH_CARBON_TABLES = 'REBUILD_WITH_CARBON_TABLES';
 
     // todo - transfer all cli options to the config
-    public const REST = 'REST';
-    public const NAMESPACE = 'NAMESPACE';
-    public const TABLE_PREFIX = 'TABLE_PREFIX';
-    public const VALIDATE_EXTERNAL_REQUESTS_GENERATED_SQL = 'VALIDATE_EXTERNAL_REQUESTS_GENERATED_SQL';
+    public const string REST = 'REST';
+    public const string NAMESPACE = 'NAMESPACE';
+    public const string TABLE_PREFIX = 'TABLE_PREFIX';
+    public const string VALIDATE_EXTERNAL_REQUESTS_GENERATED_SQL = 'VALIDATE_EXTERNAL_REQUESTS_GENERATED_SQL';
 
     // Site Config
-    public const SITE = 'SITE';
-    public const QUERY_WITH_DATABASE_NAME = 'QUERY_WITH_DATABASE_NAME';
-    public const URL = 'URL';
-    public const ROOT = 'ROOT';
-    public const CACHE_CONTROL = 'CACHE_CONTROL';
-    public const CONFIG = 'CONFIG';
-    public const TIMEZONE = 'TIMEZONE';
-    public const TITLE = 'TITLE';
-    public const VERSION = 'VERSION';
-    public const SEND_EMAIL = 'SEND_EMAIL';
-    public const REPLY_EMAIL = 'REPLY_EMAIL';
-    public const HTTP = 'HTTP';
-    public const IP_TEST = 'IP_TEST';
-    public const PROGRAMS = 'PROGRAMS';
-    public const PROGRAM_DIRECTORIES = 'PROGRAM_DIRECTORIES';
+    public const string SITE = 'SITE';
+    public const string QUERY_WITH_DATABASE_NAME = 'QUERY_WITH_DATABASE_NAME';
+    public const string URL = 'URL';
+    public const string ROOT = 'ROOT';
+    public const string CACHE_CONTROL = 'CACHE_CONTROL';
+    public const string CONFIG = 'CONFIG';
+    public const string TIMEZONE = 'TIMEZONE';
+    public const string TITLE = 'TITLE';
+    public const string VERSION = 'VERSION';
+    public const string SEND_EMAIL = 'SEND_EMAIL';
+    public const string REPLY_EMAIL = 'REPLY_EMAIL';
+    public const string HTTP = 'HTTP';
+    public const string IP_TEST = 'IP_TEST';
+    public const string PROGRAMS = 'PROGRAMS';
+    public const string PROGRAM_DIRECTORIES = 'PROGRAM_DIRECTORIES';
 
     // Session Mgmt
-    public const SESSION = 'SESSION';
-    public const REMOTE = 'REMOTE';
-    public const SERIALIZE = 'SERIALIZE';   // accepts an array of values todo - doc
-    public const CALLBACK = 'CALLBACK';
-    public const PATH = 'PATH';
+    public const string SESSION = 'SESSION';
+    public const string REMOTE = 'REMOTE';
+    public const string SERIALIZE = 'SERIALIZE';   // accepts an array of values todo - doc
+    public const string CALLBACK = 'CALLBACK';
+    public const string PATH = 'PATH';
 
     // Web Socket (Secure* see carbonphp.com)
-    public const SOCKET = 'SOCKET';
-    public const WEB_SOCKET = 'WEB_SOCKET';
-    public const PORT = 'PORT';
-    public const DEV = 'DEV';
-    public const SSL = 'SSL';
-    public const KEY = 'KEY';
-    public const CERT = 'CERT';
+    public const string SOCKET = 'SOCKET';
+    public const string WEB_SOCKET = 'WEB_SOCKET';
+    public const string PORT = 'PORT';
+    public const string DEV = 'DEV';
+    public const string SSL = 'SSL';
+    public const string KEY = 'KEY';
+    public const string CERT = 'CERT';
 
     // Error Catcher
-    public const ERROR = 'ERROR';
-    public const DISPLAY = 'DISPLAY';
-    public const LOCATION = 'LOCATION';
-    public const LEVEL = 'LEVEL';
-    public const STORE = 'STORE';
-    public const SHOW = 'SHOW';
-    public const FULL = 'FULL';
+    public const string ERROR = 'ERROR';
+    public const string DISPLAY = 'DISPLAY';
+    public const string LOCATION = 'LOCATION';
+    public const string LEVEL = 'LEVEL';
+    public const string STORE = 'STORE';
+    public const string SHOW = 'SHOW';
+    public const string FULL = 'FULL';
 
     // Default View info for Mvc
-    public const VIEW = 'VIEW';
-    public const WRAPPER = 'WRAPPER';
-    public const MINIFY = 'MINIFY';
-    public const CSS = 'CSS';
-    public const JS = 'JS';
-    public const OUT = 'OUT';
+    public const string VIEW = 'VIEW';
+    public const string WRAPPER = 'WRAPPER';
+    public const string MINIFY = 'MINIFY';
+    public const string CSS = 'CSS';
+    public const string JS = 'JS';
+    public const string OUT = 'OUT';
 
     // Auto load is deprecated
-    public const AUTOLOAD = 'AUTOLOAD';
+    public const string AUTOLOAD = 'AUTOLOAD';
 
     // Application invocation method
     public static bool $is_running_production = false;
@@ -279,7 +278,16 @@ class CarbonPHP
 
             }
 
-            WebSocket::handleSingleUserConnections();
+            // todo - if not apache it's possible to be handled???
+            if (PHP_SAPI !== 'cli'
+                && function_exists('apache_connection_stream')
+                && str_contains($_SERVER['HTTP_CONNECTION'] ?? '', 'Upgrade')
+                && str_contains($_SERVER['HTTP_UPGRADE'] ?? '', 'websocket')) {
+
+                // Here you can handle the WebSocket upgrade logic
+                WebSocket::handleSingleUserConnections();
+
+            }
 
             return self::startApplication() !== false; // startApplication can return null which is not allowed here
 
@@ -448,7 +456,7 @@ class CarbonPHP
      * @link https://www.php.net/manual/en/wrappers.php.php
      * @return void
      */
-    public static function protocolWrapper() : void
+    public static function protocolWrapper(): void
     {
 
         if (!defined('STDOUT')) {
@@ -576,8 +584,6 @@ class CarbonPHP
                 CarbonRestTest::setupServerVariables();
 
             }
-
-            Htaccess::generalConfigurations();
 
             ####################  Define your own server root
             self::$app_root ??= self::CARBON_ROOT;
@@ -754,7 +760,7 @@ class CarbonPHP
                         # try to json decode. Json payloads ar sent to the input stream
                         $_POST = json_decode($getAnyJsonPayloads, true, 512, JSON_THROW_ON_ERROR);
 
-                    }elseif (is_string($getAnyJsonPayloads) && !empty($getAnyJsonPayloads)) {
+                    } elseif (is_string($getAnyJsonPayloads) && !empty($getAnyJsonPayloads)) {
 
                         $_POST = ['stdin' => $getAnyJsonPayloads];
 
@@ -829,7 +835,9 @@ class CarbonPHP
 
 
             if (!self::$cli && is_array($config[self::SESSION][self::SERIALIZE] ?? false)) {
+
                 forward_static_call_array([Serialized::class, 'start'], $config[self::SESSION][self::SERIALIZE]);    // Pull theses from session, and store on shutdown
+
             }
 
             self::$setupComplete = true;

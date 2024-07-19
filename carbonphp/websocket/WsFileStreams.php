@@ -18,6 +18,7 @@ use Throwable;
 abstract class WsFileStreams extends WsBinaryStreams
 {
 
+    public const string FIFO_DIRECTORY = __DIR__ . DIRECTORY_SEPARATOR . "tmp" . DIRECTORY_SEPARATOR;
 
     /**
      * @var Resource[]
